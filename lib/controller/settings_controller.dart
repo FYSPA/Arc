@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/constans.dart';
+import '../core/enums.dart';
 
 enum PerformanceMode { off, powerSaving, limit80 }
 
@@ -61,6 +62,15 @@ class SettingsController extends ChangeNotifier {
 
   bool _useAmoledBlack = false;
   bool get useAmoledBlack => _useAmoledBlack;
+
+  bool _enableAmoledGlow = true;
+  bool get enableAmoledGlow => _enableAmoledGlow;
+
+  GlowPosition _amoledGlowPosition = GlowPosition.topRight;
+  GlowPosition get amoledGlowPosition => _amoledGlowPosition;
+
+  double _amoledGlowIntensity = 0.5;
+  double get amoledGlowIntensity => _amoledGlowIntensity;
 
   void setThemeMode(ThemeMode mode) {
     _themeMode = mode;
@@ -148,6 +158,21 @@ class SettingsController extends ChangeNotifier {
 
   void setUseAmoledBlack(bool value) {
     _useAmoledBlack = value;
+    notifyListeners();
+  }
+
+  void setEnableAmoledGlow(bool value) {
+    _enableAmoledGlow = value;
+    notifyListeners();
+  }
+
+  void setAmoledGlowPosition(GlowPosition position) {
+    _amoledGlowPosition = position;
+    notifyListeners();
+  }
+
+  void setAmoledGlowIntensity(double value) {
+    _amoledGlowIntensity = value;
     notifyListeners();
   }
 

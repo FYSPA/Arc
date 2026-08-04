@@ -8,6 +8,7 @@ import '../../core/broken_icons.dart';
 import '../../core/enums.dart';
 import '../../core/extensions.dart';
 import '../miniplayer/miniplayer_bar.dart';
+import '../widgets/amoled_glow_effect.dart';
 import 'home_page.dart';
 
 class MainPage extends StatefulWidget {
@@ -59,7 +60,12 @@ class _MainPageState extends State<MainPage> {
           title: Text(_tabs[currentIndex].label),
           centerTitle: false,
         ),
-        body: IndexedStack(index: currentIndex, children: _tabPages),
+        body: Stack(
+          children: [
+            const AmoledGlowEffect(),
+            IndexedStack(index: currentIndex, children: _tabPages),
+          ],
+        ),
         bottomNavigationBar: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

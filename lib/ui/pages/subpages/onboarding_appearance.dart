@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../controller/settings_controller.dart';
 import '../../../core/broken_icons.dart';
+import '../../../core/enums.dart';
 import '../../dialogs/color_picker_dialog.dart';
 import '../../dialogs/language_dialog.dart';
 import '../../dialogs/library_tabs_dialog.dart';
@@ -44,6 +45,39 @@ class OnboardingAppearancePage extends StatelessWidget {
           value: settings.useAmoledBlack,
           onChanged: settings.setUseAmoledBlack,
         ),
+        if (settings.useAmoledBlack) ...[
+          SettingsTile(
+            icon: Broken.drop,
+            title: 'Glow Effect',
+            subtitle: 'Accent color ambient glow',
+            type: SettingsTileType.toggle,
+            value: settings.enableAmoledGlow,
+            onChanged: settings.setEnableAmoledGlow,
+          ),
+          if (settings.enableAmoledGlow) ...[
+            SettingsTile(
+              icon: Broken.sidebar_bottom,
+              title: 'Glow Position',
+              subtitle: settings.amoledGlowPosition.label,
+              onTap: () => _showGlowPositionDialog(context, settings),
+            ),
+            SettingsTile(
+              icon: Broken.speedometer,
+              title: 'Glow Intensity',
+              subtitle: '${(settings.amoledGlowIntensity * 100).round()}%',
+              trailing: SizedBox(
+                width: 120.0,
+                child: Slider(
+                  value: settings.amoledGlowIntensity,
+                  min: 0.0,
+                  max: 1.0,
+                  divisions: 20,
+                  onChanged: settings.setAmoledGlowIntensity,
+                ),
+              ),
+            ),
+          ],
+        ],
         SettingsTile(
           icon: Broken.language_square,
           title: 'Language',
@@ -85,4 +119,121 @@ String _themeModeText(ThemeMode mode) {
     case ThemeMode.dark:
       return 'Dark';
   }
+}
+
+void _showGlowPositionDialog(
+  BuildContext context,
+  SettingsController settings,
+) {
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(
+        'Glow Position',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+          letterSpacing: 1.0,
+        ),
+      ),
+      titlePadding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 0.0),
+      contentPadding: const EdgeInsets.all(20.0),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 180.0,
+            height: 140.0,
+            child: Stack(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withAlpha(128),
+                    borderRadius: BorderRadius.circular(12.0),
+                    border: Border.all(
+                      color: colorScheme.outlineVariant,
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                for (final position in GlowPosition.values)
+                  Positioned(
+                    top:
+                        position == GlowPosition.topLeft ||
+                            position == GlowPosition.topRight
+                        ? 8.0
+                        : null,
+                    bottom:
+                        position == GlowPosition.bottomLeft ||
+                            position == GlowPosition.bottomRight
+                        ? 8.0
+                        : null,
+                    left:
+                        position == GlowPosition.topLeft ||
+                            position == GlowPosition.bottomLeft
+                        ? 8.0
+                        : null,
+                    right:
+                        position == GlowPosition.topRight ||
+                            position == GlowPosition.bottomRight
+                        ? 8.0
+                        : null,
+                    child: GestureDetector(
+                      onTap: () {
+                        settings.setAmoledGlowPosition(position);
+                        Navigator.pop(context);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 28.0,
+                        height: 28.0,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: settings.amoledGlowPosition == position
+                              ? colorScheme.primary.withAlpha(80)
+                              : colorScheme.surfaceContainerHighest,
+                          border: Border.all(
+                            color: settings.amoledGlowPosition == position
+                                ? colorScheme.primary
+                                : colorScheme.outlineVariant,
+                            width: settings.amoledGlowPosition == position
+                                ? 1.5
+                                : 0.5,
+                          ),
+                          boxShadow: settings.amoledGlowPosition == position
+                              ? [
+                                  BoxShadow(
+                                    color: settings.mainColor.withAlpha(60),
+                                    blurRadius: 12.0,
+                                    spreadRadius: 2.0,
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: settings.amoledGlowPosition == position
+                            ? Icon(
+                                Broken.tick_circle,
+                                size: 14.0,
+                                color: colorScheme.primary,
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16.0),
+          Text(
+            'Tap a corner to set glow position',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
