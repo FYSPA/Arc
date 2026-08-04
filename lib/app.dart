@@ -4,8 +4,7 @@ import 'package:provider/provider.dart';
 import 'controller/navigator_controller.dart';
 import 'controller/settings_controller.dart';
 import 'core/themes.dart';
-import 'ui/pages/main_page.dart';
-import 'ui/pages/onboarding_page.dart';
+import 'ui/pages/splash_page.dart';
 
 class ArcApp extends StatelessWidget {
   const ArcApp({super.key});
@@ -30,9 +29,7 @@ class ArcApp extends StatelessWidget {
               settings.mainColor,
               isAmoled: settings.useAmoledBlack,
             ),
-            home: settings.isOnboarded
-                ? const MainPage()
-                : const OnboardingPage(),
+            home: const SplashPage(),
           );
         },
       ),
