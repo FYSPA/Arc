@@ -47,4 +47,17 @@ extension GlowPositionExtension on GlowPosition {
         return Alignment.bottomRight;
     }
   }
+
+  Offset get translateOffset {
+    switch (this) {
+      case GlowPosition.topLeft:
+        return const Offset(120.0, -120.0);
+      case GlowPosition.topRight:
+        return const Offset(-120.0, -120.0);
+      case GlowPosition.bottomLeft:
+        return const Offset(120.0, 120.0);
+      case GlowPosition.bottomRight:
+        return const Offset(-120.0, 120.0);
+    }
+  }
 }

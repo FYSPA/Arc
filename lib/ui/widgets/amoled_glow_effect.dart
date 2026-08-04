@@ -28,6 +28,7 @@ class AmoledGlowEffect extends StatelessWidget {
           child: _GlowBlob(
             color: settings.mainColor,
             intensity: settings.amoledGlowIntensity,
+            position: settings.amoledGlowPosition,
           ),
         ),
       ),
@@ -38,23 +39,33 @@ class AmoledGlowEffect extends StatelessWidget {
 class _GlowBlob extends StatelessWidget {
   final Color color;
   final double intensity;
+  final GlowPosition position;
 
-  const _GlowBlob({required this.color, required this.intensity});
+  const _GlowBlob({
+    required this.color,
+    required this.intensity,
+    required this.position,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final alpha = (intensity * 60).round().clamp(5, 60);
+    final alpha = (intensity * 35).round().clamp(3, 35);
 
     return Transform.translate(
-      offset: const Offset(-120.0, -120.0),
+      offset: position.translateOffset,
       child: Container(
-        width: 350.0,
-        height: 350.0,
+        width: 600.0,
+        height: 600.0,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
-            colors: [color.withAlpha(alpha), color.withAlpha(0)],
-            stops: const [0.0, 1.0],
+            colors: [
+              color.withAlpha(alpha),
+              color.withAlpha((alpha * 0.5).round()),
+              color.withAlpha((alpha * 0.15).round()),
+              color.withAlpha(0),
+            ],
+            stops: const [0.0, 0.25, 0.6, 1.0],
           ),
         ),
       ),
