@@ -183,6 +183,7 @@ class _PermissionsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final hasPermission = settings.hasStoragePermission;
 
     return ListView(
@@ -218,17 +219,39 @@ class _PermissionsPage extends StatelessWidget {
           ),
           visualDensity: const VisualDensity(vertical: -4),
         ),
-        SettingsTile(
-          icon: Broken.global,
-          title: 'Language',
-          subtitle: settings.languageCode == 'es' ? 'Español' : 'English',
-          onTap: () => showLanguageDialog(context, settings),
-        ),
-        SettingsTile(
-          icon: Broken.speedometer,
-          title: 'Performance Mode',
-          subtitle: _performanceModeText(settings.performanceMode),
-          onTap: () => showPerformanceDialog(context, settings),
+        const SizedBox(height: 12.0),
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest.withAlpha(128),
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          child: Row(
+            children: [
+              Icon(Broken.info_circle, size: 20.0, color: colorScheme.primary),
+              const SizedBox(width: 12.0),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Why do we need this?',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4.0),
+                    Text(
+                      'Arc needs storage access to scan your device for FLAC, WAV, and MP3 files, read metadata, and display album artwork.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
