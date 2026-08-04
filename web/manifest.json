@@ -1,11 +1,11 @@
 {
-    "name": "arc_app",
-    "short_name": "arc_app",
+    "name": "Arc",
+    "short_name": "Arc",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Arc App - Reproductor de música local.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

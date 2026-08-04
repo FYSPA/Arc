@@ -8,7 +8,7 @@
 PRODUCT_NAME = arc_app
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.arcApp
+PRODUCT_BUNDLE_IDENTIFIER = dev.yh.arcApp
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 dev.yh. All rights reserved.

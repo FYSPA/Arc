@@ -1,6 +1,6 @@
 <div align="center">
   <br>
-  <img src="assets/Logo.png" alt="Arc Player Logo" width="300" />
+  <img src="assets/Logos/ArcVideo.gif" alt="Arc Player Logo" width="300" />
   <h1>Arc</h1>
   <p>
     <strong>Un reproductor de música local construido con Flutter, diseñado con un motor de audio personalizado (Arc Engine) y una biblioteca de renderizado de UI personalizada (Arx Canvas). Soporta formatos FLAC, WAV y MP3.</strong>
