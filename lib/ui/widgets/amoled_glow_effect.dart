@@ -25,14 +25,24 @@ class AmoledGlowEffect extends StatelessWidget {
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 400),
         opacity: visible ? 1.0 : 0.0,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: settings.amoledGlowPosition.alignment,
-              radius: 0.8,
-              colors: [settings.mainColor.withAlpha(alpha), Colors.transparent],
-            ),
-          ),
+        child: Stack(
+          children: [
+            for (final pos in settings.amoledGlowPositions)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: pos.alignment,
+                      radius: 0.8,
+                      colors: [
+                        settings.mainColor.withAlpha(alpha),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

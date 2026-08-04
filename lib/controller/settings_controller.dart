@@ -66,8 +66,9 @@ class SettingsController extends ChangeNotifier {
   bool _enableAmoledGlow = true;
   bool get enableAmoledGlow => _enableAmoledGlow;
 
-  GlowPosition _amoledGlowPosition = GlowPosition.topRight;
-  GlowPosition get amoledGlowPosition => _amoledGlowPosition;
+  Set<GlowPosition> _amoledGlowPositions = {GlowPosition.topRight};
+  Set<GlowPosition> get amoledGlowPositions =>
+      Set.unmodifiable(_amoledGlowPositions);
 
   double _amoledGlowIntensity = 0.5;
   double get amoledGlowIntensity => _amoledGlowIntensity;
@@ -166,8 +167,17 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setAmoledGlowPosition(GlowPosition position) {
-    _amoledGlowPosition = position;
+  void toggleAmoledGlowPosition(GlowPosition position) {
+    if (_amoledGlowPositions.contains(position)) {
+      _amoledGlowPositions.remove(position);
+    } else if (_amoledGlowPositions.length < 2) {
+      _amoledGlowPositions.add(position);
+    }
+    notifyListeners();
+  }
+
+  void setAmoledGlowPositions(Set<GlowPosition> positions) {
+    _amoledGlowPositions = Set<GlowPosition>.from(positions);
     notifyListeners();
   }
 

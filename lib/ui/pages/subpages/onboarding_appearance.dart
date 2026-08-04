@@ -58,7 +58,7 @@ class OnboardingAppearancePage extends StatelessWidget {
             SettingsTile(
               icon: Broken.sidebar_bottom,
               title: 'Glow Position',
-              subtitle: settings.amoledGlowPosition.label,
+              subtitle: _glowPositionsText(settings.amoledGlowPositions),
               onTap: () => _showGlowPositionDialog(context, settings),
             ),
             SettingsTile(
@@ -121,118 +121,141 @@ String _themeModeText(ThemeMode mode) {
   }
 }
 
+String _glowPositionsText(Set<GlowPosition> positions) {
+  if (positions.isEmpty) return 'None';
+  if (positions.length == 1) return positions.first.label;
+  return positions.map((p) => p.label).join(', ');
+}
+
 void _showGlowPositionDialog(
   BuildContext context,
   SettingsController settings,
 ) {
   final theme = Theme.of(context);
   final colorScheme = theme.colorScheme;
+  final selected = Set<GlowPosition>.from(settings.amoledGlowPositions);
 
   showDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text(
-        'Glow Position',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: colorScheme.onSurfaceVariant,
-          letterSpacing: 1.0,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) => AlertDialog(
+        title: Text(
+          'Glow Position',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+            letterSpacing: 1.0,
+          ),
         ),
-      ),
-      titlePadding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 0.0),
-      contentPadding: const EdgeInsets.all(20.0),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 180.0,
-            height: 140.0,
-            child: Stack(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest.withAlpha(128),
-                    borderRadius: BorderRadius.circular(12.0),
-                    border: Border.all(
-                      color: colorScheme.outlineVariant,
-                      width: 0.5,
-                    ),
-                  ),
-                ),
-                for (final position in GlowPosition.values)
-                  Positioned(
-                    top:
-                        position == GlowPosition.topLeft ||
-                            position == GlowPosition.topRight
-                        ? 8.0
-                        : null,
-                    bottom:
-                        position == GlowPosition.bottomLeft ||
-                            position == GlowPosition.bottomRight
-                        ? 8.0
-                        : null,
-                    left:
-                        position == GlowPosition.topLeft ||
-                            position == GlowPosition.bottomLeft
-                        ? 8.0
-                        : null,
-                    right:
-                        position == GlowPosition.topRight ||
-                            position == GlowPosition.bottomRight
-                        ? 8.0
-                        : null,
-                    child: GestureDetector(
-                      onTap: () {
-                        settings.setAmoledGlowPosition(position);
-                        Navigator.pop(context);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 28.0,
-                        height: 28.0,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: settings.amoledGlowPosition == position
-                              ? colorScheme.primary.withAlpha(80)
-                              : colorScheme.surfaceContainerHighest,
-                          border: Border.all(
-                            color: settings.amoledGlowPosition == position
-                                ? colorScheme.primary
-                                : colorScheme.outlineVariant,
-                            width: settings.amoledGlowPosition == position
-                                ? 1.5
-                                : 0.5,
-                          ),
-                          boxShadow: settings.amoledGlowPosition == position
-                              ? [
-                                  BoxShadow(
-                                    color: settings.mainColor.withAlpha(60),
-                                    blurRadius: 12.0,
-                                    spreadRadius: 2.0,
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: settings.amoledGlowPosition == position
-                            ? Icon(
-                                Broken.tick_circle,
-                                size: 14.0,
-                                color: colorScheme.primary,
-                              )
-                            : null,
+        titlePadding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 0.0),
+        contentPadding: const EdgeInsets.all(20.0),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 180.0,
+              height: 140.0,
+              child: Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest.withAlpha(128),
+                      borderRadius: BorderRadius.circular(12.0),
+                      border: Border.all(
+                        color: colorScheme.outlineVariant,
+                        width: 0.5,
                       ),
                     ),
                   ),
-              ],
+                  for (final position in GlowPosition.values)
+                    Positioned(
+                      top:
+                          position == GlowPosition.topLeft ||
+                              position == GlowPosition.topRight
+                          ? 8.0
+                          : null,
+                      bottom:
+                          position == GlowPosition.bottomLeft ||
+                              position == GlowPosition.bottomRight
+                          ? 8.0
+                          : null,
+                      left:
+                          position == GlowPosition.topLeft ||
+                              position == GlowPosition.bottomLeft
+                          ? 8.0
+                          : null,
+                      right:
+                          position == GlowPosition.topRight ||
+                              position == GlowPosition.bottomRight
+                          ? 8.0
+                          : null,
+                      child: GestureDetector(
+                        onTap: () {
+                          final isActive = selected.contains(position);
+                          if (isActive) {
+                            selected.remove(position);
+                          } else if (selected.length < 2) {
+                            selected.add(position);
+                          }
+                          setDialogState(() {});
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 28.0,
+                          height: 28.0,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: selected.contains(position)
+                                ? colorScheme.primary.withAlpha(80)
+                                : colorScheme.surfaceContainerHighest,
+                            border: Border.all(
+                              color: selected.contains(position)
+                                  ? colorScheme.primary
+                                  : colorScheme.outlineVariant,
+                              width: selected.contains(position) ? 1.5 : 0.5,
+                            ),
+                            boxShadow: selected.contains(position)
+                                ? [
+                                    BoxShadow(
+                                      color: settings.mainColor.withAlpha(60),
+                                      blurRadius: 12.0,
+                                      spreadRadius: 2.0,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: selected.contains(position)
+                              ? Icon(
+                                  Broken.tick_circle,
+                                  size: 14.0,
+                                  color: colorScheme.primary,
+                                )
+                              : null,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16.0),
-          Text(
-            'Tap a corner to set glow position',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+            const SizedBox(height: 16.0),
+            Text(
+              'Tap corners to toggle (max 2)',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
+          ],
+        ),
+        actions: [
+          FilledButton.tonal(
+            onPressed: () {
+              settings.setAmoledGlowPositions(selected);
+              Navigator.pop(context);
+            },
+            child: const Text('Done'),
           ),
         ],
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.fromLTRB(20.0, 0.0, 20.0, 20.0),
       ),
     ),
   );
