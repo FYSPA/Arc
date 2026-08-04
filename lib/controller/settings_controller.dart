@@ -32,11 +32,26 @@ class SettingsController extends ChangeNotifier {
   PerformanceMode _performanceMode = PerformanceMode.off;
   PerformanceMode get performanceMode => _performanceMode;
 
-  List<String> _libraryTabs = ['Songs', 'Artists', 'Albums', 'Folders', 'Genres'];
+  List<String> _libraryTabs = [
+    'Songs',
+    'Artists',
+    'Albums',
+    'Folders',
+    'Genres',
+  ];
   List<String> get libraryTabs => List.unmodifiable(_libraryTabs);
 
   int _artworkCacheSize = 300;
   int get artworkCacheSize => _artworkCacheSize;
+
+  String _fabType = 'search';
+  String get fabType => _fabType;
+
+  String _defaultLibraryTab = 'Songs';
+  String get defaultLibraryTab => _defaultLibraryTab;
+
+  double _borderRadiusMultiplier = 1.0;
+  double get borderRadiusMultiplier => _borderRadiusMultiplier;
 
   bool _isOnboarded = false;
   bool get isOnboarded => _isOnboarded;
@@ -108,6 +123,21 @@ class SettingsController extends ChangeNotifier {
 
   void setArtworkCacheSize(int size) {
     _artworkCacheSize = size;
+    notifyListeners();
+  }
+
+  void setFabType(String type) {
+    _fabType = type;
+    notifyListeners();
+  }
+
+  void setDefaultLibraryTab(String tab) {
+    _defaultLibraryTab = tab;
+    notifyListeners();
+  }
+
+  void setBorderRadiusMultiplier(double value) {
+    _borderRadiusMultiplier = value;
     notifyListeners();
   }
 
