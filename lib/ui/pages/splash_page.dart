@@ -66,6 +66,24 @@ class _SplashPageState extends State<SplashPage>
     super.dispose();
   }
 
+  Widget _buildGif(bool isDark) {
+    final gif = Image.asset(
+      'assets/Logos/ArcVideo.gif',
+      width: 200.0,
+      gaplessPlayback: true,
+    );
+
+    if (!isDark) return gif;
+
+    return ShaderMask(
+      shaderCallback: (bounds) => const LinearGradient(
+        colors: [Colors.white, Colors.white],
+      ).createShader(bounds),
+      blendMode: BlendMode.srcIn,
+      child: gif,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final brightness = MediaQuery.platformBrightnessOf(context);
@@ -91,11 +109,7 @@ class _SplashPageState extends State<SplashPage>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image.asset(
-                  'assets/Logos/ArcVideo.gif',
-                  width: 200.0,
-                  gaplessPlayback: true,
-                ),
+                _buildGif(isDark),
                 const SizedBox(height: 16.0),
                 Text(
                   'Arc',
