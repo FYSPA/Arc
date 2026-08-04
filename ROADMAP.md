@@ -15,6 +15,7 @@
 
 ### Controller
 - [x] `settings_controller.dart` — Theme, language, performance, folders, media store
+- [x] `navigator_controller.dart` — Navigation state (currentPageIndex, navigateTo)
 
 ### UI — Onboarding
 - [x] `onboarding_page.dart` — Full screen, AMOLED, section headers
@@ -29,48 +30,17 @@
 - [x] `performance_dialog.dart` — Visual selector with cards
 - [x] `backup_restore_dialog.dart` — Icon + buttons
 
+### UI — Main Page + Miniplayer
+- [x] `enums.dart` — `LibraryTab` enum (home, songs, albums, artists, folders)
+- [x] `main_page.dart` — Scaffold + AppBar + IndexedStack + NavigationBar M3
+- [x] `miniplayer_bar.dart` — 82px collapsed bar (artwork, title, play/pause)
+- [x] `home_page.dart` — Home tab with scroll sections (Recently Added, Played, Top Artists/Albums)
+
 ### Infrastructure
 - [x] Fonts registered (LexendDeca 9 weights + Broken icons)
 - [x] Package ID changed to `dev.yh.arc_app`
 - [x] `arc_engine` / `arx_canvas` as git dependencies (temporarily disabled)
-
----
-
-## Phase 1 — Main Page + Miniplayer (HIGHEST PRIORITY)
-
-> **Goal:** Get the main screen working with navigation and miniplayer.
-
-### 1.1 `enums.dart` — Data types
-- [ ] `LibraryTab` (songs, artists, albums, folders, genres, playlists)
-- [ ] `SortType`, `SortDirection`
-- [ ] `QueueSource`
-- [ ] `MediaType`
-
-### 1.2 `navigator_controller.dart` — Navigation
-- [ ] State: `currentPageIndex` (bottom nav)
-- [ ] Method: `navigateTo(index)`
-- [ ] Stream/notifier for page changes
-
-### 1.3 `main_page.dart` — Main structure
-- [ ] `Scaffold` with `IndexedStack` or `PageView`
-- [ ] `BottomNavigationBar` with 4-5 tabs
-- [ ] `MiniplayerBar` integrated above bottom nav
-- [ ] Drawer (optional, can be phase 7)
-
-### 1.4 `miniplayer_bar.dart` — Collapsed bar
-- [ ] Height ~82px
-- [ ] Artwork thumbnail (48x48)
-- [ ] Title + artist
-- [ ] Play/pause button
-- [ ] Swipe up → expand to player_page
-- [ ] Design: `design_extracted/07`
-
-### 1.5 `home_page.dart` — Home tab content
-- [ ] Recent / favorite stats
-- [ ] Recently played songs
-- [ ] Functional placeholder
-
-**Docs:** `design_extracted/07`, `design_screens/02`
+- [x] Navigation flow: Onboarding → MainPage via Provider state
 
 ---
 
@@ -261,8 +231,8 @@
 |-------|--------|-------------|
 | Core | Completed | — |
 | Onboarding | Completed | Core |
-| 1. Main Page + Miniplayer | Next | Core |
-| 2. Player Page | Pending | Phase 1 |
+| 1. Main Page + Miniplayer | Completed | Core |
+| 2. Player Page | Next | Phase 1 |
 | 3. Indexer + Tracks | Pending | Phase 1 |
 | 4. Library | Pending | Phase 3 |
 | 5. Search | Pending | Phase 3 |
@@ -273,18 +243,18 @@
 
 ---
 
-## Empty Files (27)
+## Empty Files (22)
 
 The following files exist but are empty — they are implemented in the indicated phases:
 
-**Pages (8):** main_page, tracks_page, albums_page, artists_page, playlists_page, search_page, settings_page, player_page
+**Pages (7):** tracks_page, albums_page, artists_page, playlists_page, search_page, settings_page, player_page
 
-**Miniplayer (3):** miniplayer_bar, player_page, lyrics_view
+**Miniplayer (2):** player_page, lyrics_view
 
-**Controllers (6):** indexer_controller, navigator_controller, queue_controller, playlist_controller, history_controller, current_color_controller
+**Controllers (5):** indexer_controller, queue_controller, playlist_controller, history_controller, current_color_controller
 
 **Services (4):** lyrics_service, audio_tags, arx_canvas_client, artwork_service
 
-**Core (2):** enums, utils
+**Core (1):** utils
 
 **Widgets (5):** custom_widgets, artwork, waveform, sort_by_button, explandable_box
