@@ -12,14 +12,17 @@ dependencies:
   cupertino_icons: ^1.0.8
   provider: ^6.1.2
   flutter_colorpicker: ^1.1.0
-  # arc_engine:
-  #   git:
-  #     url: https://github.com/FYSPA/Arc-Engine.git
-  #     ref: main
-  # arx_canvas:
-  #   git:
-  #     url: https://github.com/FYSPA/Arx-Canvas.git
-  #     ref: main
+  path_provider: ^2.1.5
+  shared_preferences: ^2.5.0
+  arc_engine:
+    git:
+      url: https://github.com/FYSPA/Arc-Engine.git
+      ref: main
+  arx_canvas:
+    git:
+      url: https://github.com/FYSPA/Arx-Canvas.git
+      ref: main
+  palette_generator: ^0.3.3+4
 
 dev_dependencies:
   flutter_test:

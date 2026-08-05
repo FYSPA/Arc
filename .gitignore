@@ -11,6 +11,8 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+.cache/neocmakeslp
+.cache
 
 # IntelliJ related
 *.iml
@@ -46,3 +48,4 @@ app.*.map.json
 
 /docs
 .env
+logs.md

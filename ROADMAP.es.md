@@ -12,213 +12,146 @@
 - [x] `dimensions.dart` — Sistema de escala (space, multipliedRadius)
 - [x] `constans.dart` — Colores de marca (kMainColorLight/Dark, pitchBlack)
 - [x] `extensions.dart` — Color extensions (alphaBlendWith, withOpacityExt)
+- [x] `broken_icons.dart` — 900+ iconos custom
 
-### Controller
-- [x] `settings_controller.dart` — Theme, language, performance, folders, media store
+### Controllers
+- [x] `settings_controller.dart` — Theme, language, performance, folders, media store + **persistencia con SharedPreferences**
 - [x] `navigator_controller.dart` — Estado de navegación (currentPageIndex, navigateTo)
+- [x] `player_controller.dart` — Wrapper de arc_engine, cola, gapless, MediaSession
+- [x] `current_color_controller.dart` — Color de acento dinámico desde la carátula
+- [x] `indexer_controller.dart` — Escaneo chunked de MediaStore + filtrado por carpetas
+
+### Modelos
+- [x] `track.dart` — Modelo ArcTrack (fromMap)
+- [x] `album.dart` — Modelo ArcAlbum (fromMap)
+- [x] `artist.dart` — Modelo ArcArtist (fromMap)
+
+### Servicios
+- [x] `permission_service.dart` — MethodChannel custom para permiso de audio en Android 13+
+- [x] `media_store_service.dart` — MethodChannel custom para songs, albums, artists, folders, artwork
+- [x] `artwork_service.dart` — Caché de dos niveles + getArtworkImage() + getCachedPath()
 
 ### UI — Onboarding
-- [x] `onboarding_page.dart` — Full screen, AMOLED, section headers
+- [x] `onboarding_page.dart` — PageView de 3 páginas (Apariencia, Permisos, Biblioteca)
+- [x] `onboarding_appearance.dart` — Tema, color, AMOLED, glow, idioma, border radius
+- [x] `onboarding_permissions.dart` — Permiso de almacenamiento + selección de carpetas
+- [x] `onboarding_library.dart` — Tabs de biblioteca, rendimiento, configuración FAB
 - [x] `settings_tile.dart` — Widget genérico (tap/toggle/expansion)
 - [x] `settings_card.dart` — Card contenedora con header
 - [x] `animated_check_mark.dart` — Checkmark animado
 - [x] `section_header.dart` — Separador de secciones
-- [x] `onboarding_bottom_bar.dart` — Botones permiso + continuar
+- [x] `onboarding_page_header.dart` — Header reutilizable para páginas de onboarding
 
 ### UI — Diálogos
 - [x] `theme_dialog.dart` — Selector visual con cards
 - [x] `performance_dialog.dart` — Selector visual con cards
-- [x] `backup_restore_dialog.dart` — Icono + botones
+- [x] `color_picker_dialog.dart` — Selector de color de acento
+- [x] `language_dialog.dart` — Selector de idioma
+- [x] `library_tabs_dialog.dart` — Configuración de tabs
 
 ### UI — Main Page + Miniplayer
-- [x] `enums.dart` — `LibraryTab` enum (home, songs, albums, artists, folders)
-- [x] `main_page.dart` — Scaffold + AppBar + IndexedStack + NavigationBar M3
-- [x] `miniplayer_bar.dart` — Barra contraída de 82px (artwork, título, play/pause)
-- [x] `home_page.dart` — Tab home con secciones scroll (Recently Added, Played, Top Artists/Albums)
+- [x] `main_page.dart` — Scaffold + AppBar + IndexedStack + NavigationBar M3 + botón Settings
+- [x] `miniplayer_bar.dart` — Lee de PlayerController, play/pause, abre PlayerPage
+- [x] `home_page.dart` — Secciones Recently Added, Top Artists/Albums
+- [x] `albums_page.dart` — Grid de 2 columnas con artwork
+- [x] `artists_page.dart` — Lista con artwork circular
+- [x] `tracks_page.dart` — Lista searchable/sortable con carga progresiva
+
+### UI — Player
+- [x] `player_page.dart` — Pantalla completa con artwork, controles, vista de cola, toggle de letras
+- [x] `lyrics_view.dart` — Obtiene letras vía arx_canvas, maneja cambios de track + race conditions
+
+### UI — Settings
+- [x] `settings_page.dart` — 4 secciones: Apariencia, Biblioteca, Audio, Acerca de + **Secrets Keys**
+
+### Splash
+- [x] `splash_page.dart` — GIF con ShaderMask para dark mode, routing condicional a onboarding/main
 
 ### Infraestructura
 - [x] Fonts registrados (LexendDeca 9 pesos + Broken icons)
 - [x] Package ID cambiado a `dev.yh.arc_app`
-- [x] `arc_engine` / `arx_canvas` como dependencias git (temporalmente deshabilitadas)
-- [x] Flujo de navegación: Onboarding → MainPage vía Provider state
+- [x] Flujo de navegación: Splash → Onboarding → MainPage
+- [x] **Persistencia con SharedPreferences** — Todos los settings sobreviven el reinicio
+- [x] **Onboarding solo se muestra una vez** — `_isOnboarded` persistido a disco
+- [x] **arc_engine** — Reproducción de audio nativa en C++ (FFI)
+- [x] **arx_canvas** — Obtención de letras (LRCLIB, Genius, Musixmatch, etc.)
 
 ---
 
-## Fase 2 — Player Page (Reproductor)
+## Fase 3 — Biblioteca (Albums, Artists, Playlists)
 
-> **Objetivo:** Pantalla completa del reproductor con artwork y controles.
+> **Estado:** Pendiente
 
-### 2.1 `player_controller.dart` — Lógica de audio
-- [ ] Conectar `just_audio` (o `arc_engine` cuando funcione)
-- [ ] Estados: `playing`, `paused`, `position`, `duration`
-- [ ] Métodos: `play()`, `pause()`, `seekTo()`, `skipNext()`, `skipPrevious()`
-- [ ] Cola de reproducción
-
-### 2.2 `current_color_controller.dart` — Color dinámico
-- [ ] Extraer color dominante de la carátula
-- [ ] Notificar cambio de color a toda la UI
-- [ ] Animación de transición entre colores
-
-### 2.3 `player_page.dart` — Pantalla completa
-- [ ] Artwork grande con animación
-- [ ] Título + artista + álbum
-- [ ] Barra de progreso (slider)
-- [ ] Controles: prev, play/pause, next, shuffle, repeat
-- [ ] Botones: favorito, playlist, letras
-- [ ] Diseño: `design_extracted/01, 02, 04`
-
-### 2.4 `lyrics_view.dart` — Vista de letras
-- [ ] Scroll sincronizado con la posición del audio
-- [ ] Fade effect en líneas no activas
-- [ ] Diseño: `design_extracted/08`
-
-**Docs:** `design_extracted/01, 02, 04, 08` + `API-ArcEngine.md`
-
----
-
-## Fase 3 — Indexador + Tracks Page
-
-> **Objetivo:** Escanear la librería de música y mostrar la lista de canciones.
-
-### 3.1 `indexer_controller.dart` — Escaneo
-- [ ] Escanear carpetas del dispositivo
-- [ ] Leer tags con `audio_tags` (título, artista, álbum, duración)
-- [ ] Guardar en base de datos
-- [ ] Progreso de indexación
-
-### 3.2 `audio_tags.dart` — Service
-- [ ] Leer metadata de MP3/FLAC
-- [ ] Extraer carátula embedida
-
-### 3.3 `tracks_page.dart` — Lista de canciones
-- [ ] `ListView` con `TrackTile`
-- [ ] Sorting (título, artista, fecha, duración)
-- [ ] Selección múltiple
-- [ ] Diseño: `design_library/01`
-
-### 3.4 `track_tile.dart` — Widget de canción
-- [ ] Artwork thumbnail + título + artista + duración
-- [ ] Long press → menú contextual
-- [ ] Tap → reproducir
-- [ ] Diseño: `design_widgets/01`
-
-**Docs:** `design_library/01` + `design_widgets/01`
-
----
-
-## Fase 4 — Biblioteca (Albums, Artists, Playlists)
-
-> **Objetivo:** Vistas de grid para álbumes, artistas y playlists.
-
-### 4.1 `albums_page.dart`
-- [ ] Grid de álbumes con artwork
+### 3.1 `albums_page.dart`
+- [x] Grid de álbumes con artwork (hecho en Fase 2)
 - [ ] Tap → tracks del álbum
-- [ ] Diseño: `design_library/02`
 
-### 4.2 `artists_page.dart`
-- [ ] Grid de artistas (imagen circular)
+### 3.2 `artists_page.dart`
+- [x] Grid de artistas (hecho en Fase 2)
 - [ ] Tap → tracks del artista
-- [ ] Diseño: `design_library/03`
 
-### 4.3 `playlists_page.dart`
+### 3.3 `playlists_page.dart`
 - [ ] Lista de playlists
 - [ ] Crear playlist
-- [ ] Diseño: `design_library/06`
 
-### 4.4 `playlist_controller.dart`
+### 3.4 `playlist_controller.dart`
 - [ ] CRUD de playlists
 - [ ] Agregar/quitar tracks
 
-### 4.5 Widgets de biblioteca
-- [ ] `album_card.dart` — Card de álbum
-- [ ] `artist_card.dart` — Card de artista
-- [ ] `playlist_tile.dart` — Tile de playlist
-- [ ] Diseño: `design_widgets/01, 02`
-
-**Docs:** `design_library/02, 03, 06` + `design_widgets/01, 02`
-
 ---
 
-## Fase 5 — Búsqueda
+## Fase 4 — Búsqueda
 
-> **Objetivo:** Búsqueda local de tracks, álbumes, artistas.
+> **Estado:** Pendiente
 
-### 5.1 `search_page.dart`
+### 4.1 `search_page.dart`
 - [ ] Campo de búsqueda
 - [ ] Resultados por categoría (tracks, albums, artists)
-- [ ] Diseño: `design_screens/03`
-
-**Docs:** `design_screens/03`
 
 ---
 
-## Fase 6 — Settings Page
+## Fase 6 — Diálogos Avanzados
 
-> **Objetivo:** Página completa de configuración.
+> **Estado:** Pendiente
 
-### 6.1 `settings_page.dart`
-- [ ] Secciones: Appearance, Playback, Library, Storage, Advanced
-- [ ] Reusar `SettingsTile` del onboarding
-- [ ] Diseño: `design_settings/01`
-
-### 6.2 Sub-settings
-- [ ] Theme settings (`design_settings/02`)
-- [ ] Indexer settings (`design_settings/03`)
-- [ ] Playback settings (`design_settings/04`)
-- [ ] Customization (`design_settings/05`)
-- [ ] Backup & Restore (`design_settings/08`)
-
-**Docs:** `design_settings/*`
-
----
-
-## Fase 7 — Diálogos Avanzados
-
-> **Objetivo:** Menús contextuales y diálogos de detalle.
-
-### 7.1 `track_info_dialog.dart`
+### 6.1 `track_info_dialog.dart`
 - [ ] Info detallada del track con color dinámico
-- [ ] Diseño: `design_dialogs/01`
 
-### 7.2 `common_dialogs.dart`
-- [ ] Menú ⋮ universal
+### 6.2 `common_dialogs.dart`
+- [ ] Menú universal
 - [ ] Agregar a playlist, cola, favoritos
-- [ ] Diseño: `design_dialogs/05`
 
-### 7.3 `edit_tags_dialog.dart`
+### 6.3 `edit_tags_dialog.dart`
 - [ ] Editar metadata de tracks
-- [ ] Diseño: `design_dialogs/03`
-
-**Docs:** `design_dialogs/01, 03, 05`
 
 ---
 
-## Fase 8 — arc_engine + arx_canvas
+## Fase 7 — Integración completa arx_canvas
 
-> **Objetivo:** Conectar los plugins de audio y visual.
+> **Estado:** Parcialmente completada
 
-### 8.1 arc_engine
-- [ ] Compilar librerías nativas (FLAC, OGG) para arm64-v8a
-- [ ] Agregar x86_64 para testing en emulador
-- [ ] Conectar `PlayerController` con arc_engine
+### 7.1 Letras
+- [x] Obtención de letras plain text vía LyricsService (multi-provider fallback)
+- [x] Detección de cambio de track + fix de race conditions
+- [x] Secrets keys para Genius, Musixmatch, Spotify
+- [ ] Letras sincronizadas con auto-scroll
+- [ ] Highlight de línea actual
 
-### 8.2 arx_canvas
-- [ ] Artwork animado (Apple/Spotify style)
-- [ ] Letras sincronizadas
-- [ ] Cache de assets
-
-**Docs:** `API-ArcEngine.md` + `API-ArxCanvas.md`
+### 7.2 Artwork animado
+- [ ] Artwork animado de Apple Music
+- [ ] Spotify Canvas
+- [ ] Caché de assets
 
 ---
 
-## Fase 9 — Pulido Final
+## Fase 8 — Pulido Final
 
-> **Objetivo:** Detalles, animaciones, accesibilidad.
+> **Estado:** Pendiente
 
 - [ ] Transiciones de página suaves
-- [ ] Scroll optimizado (`packages/scroll_physics_modified.dart`)
-- [ ] Popups tintados (`packages/custom_popup.dart`)
-- [ ] Widgets animados (`packages/animated_widgets.dart`)
+- [ ] Scroll optimizado
+- [ ] Popups tintados
+- [ ] Widgets animados
 - [ ] Accesibilidad (semantics)
 - [ ] Performance profiling
 - [ ] Testing
@@ -229,32 +162,14 @@
 
 | Fase | Estado | Dependencias |
 |------|--------|-------------|
-| Core | Completada | — |
-| Onboarding | Completada | Core |
-| 1. Main Page + Miniplayer | Completada | Core |
-| 2. Player Page | Siguiente | Fase 1 |
-| 3. Indexador + Tracks | Pendiente | Fase 1 |
-| 4. Biblioteca | Pendiente | Fase 3 |
-| 5. Búsqueda | Pendiente | Fase 3 |
-| 6. Settings | Pendiente | Fase 1 |
-| 7. Diálogos | Pendiente | Fase 3 |
-| 8. Plugins | Pendiente | Fase 2 |
-| 9. Pulido | Pendiente | Todas |
-
----
-
-## Archivos vacíos (22)
-
-Los siguientes archivos existen pero están vacíos — se implementan en las fases indicadas:
-
-**Pages (7):** tracks_page, albums_page, artists_page, playlists_page, search_page, settings_page, player_page
-
-**Miniplayer (2):** player_page, lyrics_view
-
-**Controllers (5):** indexer_controller, queue_controller, playlist_controller, history_controller, current_color_controller
-
-**Services (4):** lyrics_service, audio_tags, arx_canvas_client, artwork_service
-
-**Core (1):** utils
-
-**Widgets (5):** custom_widgets, artwork, waveform, sort_by_button, explandable_box
+| Core | ✅ Completada | — |
+| Onboarding | ✅ Completada | Core |
+| Main Page + Miniplayer | ✅ Completada | Core |
+| 1. Player Page | ✅ Completada | Main Page |
+| 2. Indexador + Tracks | ✅ Completada | Main Page |
+| 3. Biblioteca | Pendiente | Fase 2 |
+| 4. Búsqueda | Pendiente | Fase 2 |
+| 5. Settings | ✅ Completada | Main Page |
+| 6. Diálogos | Pendiente | Fase 2 |
+| 7. arx_canvas Full | Parcial | Fase 1 |
+| 8. Pulido | Pendiente | Todas |
