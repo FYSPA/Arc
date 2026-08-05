@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../controller/indexer_controller.dart';
 import '../../controller/settings_controller.dart';
 import '../../core/broken_icons.dart';
 import '../widgets/animated_check_mark.dart';
@@ -75,7 +76,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   onPageChanged: _onPageChanged,
                   children: [
                     OnboardingAppearancePage(settings: settings),
-                    OnboardingPermissionsPage(settings: settings),
+                    OnboardingPermissionsPage(),
                     OnboardingLibraryPage(settings: settings),
                   ],
                 ),
@@ -84,9 +85,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
               const SizedBox(height: 8.0),
               _ActionBottomBar(
                 currentPage: _currentPage,
-                hasPermission: settings.hasStoragePermission,
+                hasPermission: context.watch<IndexerController>().hasPermission,
                 onContinue: _nextPage,
-                onGrantPermission: () => settings.setStoragePermission(true),
+                onGrantPermission: () async {
+                  await IndexerController.inst.requestPermission();
+                },
                 onDone: () => _completeOnboarding(settings),
               ),
               const SizedBox(height: 16.0),
