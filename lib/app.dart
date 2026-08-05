@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'controller/current_color_controller.dart';
+import 'controller/indexer_controller.dart';
 import 'controller/navigator_controller.dart';
+import 'controller/player_controller.dart';
 import 'controller/settings_controller.dart';
 import 'core/themes.dart';
 import 'ui/pages/splash_page.dart';
@@ -17,6 +20,9 @@ class ArcApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider.value(value: settings),
         ChangeNotifierProvider.value(value: NavigatorController.inst),
+        ChangeNotifierProvider.value(value: IndexerController.inst),
+        ChangeNotifierProvider.value(value: PlayerController.inst),
+        ChangeNotifierProvider.value(value: CurrentColorController.inst),
       ],
       child: Consumer<SettingsController>(
         builder: (context, settings, _) {

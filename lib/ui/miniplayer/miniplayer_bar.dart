@@ -1,34 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../controller/current_color_controller.dart';
+import '../../controller/player_controller.dart';
 import '../../core/broken_icons.dart';
 import '../../core/extensions.dart';
+import '../../services/artwork_service.dart';
+import 'player_page.dart';
 
 class MiniplayerBar extends StatelessWidget {
-  final String trackTitle;
-  final String trackArtist;
-  final Widget? artworkWidget;
-  final bool isPlaying;
-  final VoidCallback? onPlayPauseTap;
-  final VoidCallback? onTap;
-  final Color accentColor;
-
-  const MiniplayerBar({
-    super.key,
-    this.trackTitle = 'No track playing',
-    this.trackArtist = '',
-    this.artworkWidget,
-    this.isPlaying = false,
-    this.onPlayPauseTap,
-    this.onTap,
-    required this.accentColor,
-  });
+  const MiniplayerBar({super.key});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final player = context.watch<PlayerController>();
+    final colorCtrl = context.watch<CurrentColorController>();
+    final accent = colorCtrl.accentColor;
     final borderRadius = BorderRadius.vertical(top: Radius.circular(20.0));
-
-    final hasTrack = trackTitle != 'No track playing';
+    final hasTrack = player.hasTrack;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 12.0),
@@ -36,7 +26,7 @@ class MiniplayerBar extends StatelessWidget {
         height: 82.0,
         width: double.infinity,
         child: GestureDetector(
-          onTap: onTap,
+          onTap: hasTrack ? () => _openPlayer(context) : null,
           child: Container(
             decoration: BoxDecoration(
               color: theme.scaffoldBackgroundColor,
@@ -53,7 +43,7 @@ class MiniplayerBar extends StatelessWidget {
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: accentColor,
+                      color: accent,
                       borderRadius: borderRadius,
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
@@ -61,11 +51,11 @@ class MiniplayerBar extends StatelessWidget {
                         colors: [
                           Color.alphaBlend(
                             theme.colorScheme.onSurface.withAlpha(100),
-                            accentColor,
+                            accent,
                           ).withOpacityExt(0.38),
                           Color.alphaBlend(
                             theme.colorScheme.onSurface.withAlpha(40),
-                            accentColor,
+                            accent,
                           ).withOpacityExt(0.10),
                         ],
                       ),
@@ -76,23 +66,7 @@ class MiniplayerBar extends StatelessWidget {
                   padding: const EdgeInsets.all(12.0),
                   child: Row(
                     children: [
-                      SizedBox(
-                        width: 58.0,
-                        height: 58.0,
-                        child:
-                            artworkWidget ??
-                            Container(
-                              decoration: BoxDecoration(
-                                color: theme.cardColor,
-                                borderRadius: BorderRadius.circular(8.0),
-                              ),
-                              child: Icon(
-                                Broken.musicnote,
-                                size: 30.0,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                      ),
+                      _buildArtwork(context, player, theme),
                       const SizedBox(width: 12.0),
                       Expanded(
                         child: Column(
@@ -100,7 +74,9 @@ class MiniplayerBar extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              trackTitle,
+                              player.title.isNotEmpty
+                                  ? player.title
+                                  : 'No track playing',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -111,10 +87,10 @@ class MiniplayerBar extends StatelessWidget {
                                     : theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
-                            if (trackArtist.isNotEmpty) ...[
+                            if (player.artist.isNotEmpty) ...[
                               const SizedBox(height: 4.0),
                               Text(
-                                trackArtist,
+                                player.artist,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -129,19 +105,19 @@ class MiniplayerBar extends StatelessWidget {
                       ),
                       const SizedBox(width: 8.0),
                       GestureDetector(
-                        onTap: hasTrack ? onPlayPauseTap : null,
+                        onTap: hasTrack ? player.playPause : null,
                         child: Container(
                           width: 40.0,
                           height: 40.0,
                           decoration: BoxDecoration(
                             color: hasTrack
-                                ? accentColor
+                                ? accent
                                 : theme.colorScheme.surfaceContainerHighest,
                             shape: BoxShape.circle,
                             boxShadow: hasTrack
                                 ? [
                                     BoxShadow(
-                                      color: accentColor.withAlpha(80),
+                                      color: accent.withAlpha(80),
                                       blurRadius: 6.0,
                                       offset: const Offset(0.0, 2.0),
                                     ),
@@ -149,7 +125,7 @@ class MiniplayerBar extends StatelessWidget {
                                 : null,
                           ),
                           child: Icon(
-                            isPlaying ? Broken.pause : Broken.play,
+                            player.isPlaying ? Broken.pause : Broken.play,
                             size: 22.0,
                             color: hasTrack
                                 ? Colors.white.withOpacityExt(0.7)
@@ -164,6 +140,83 @@ class MiniplayerBar extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildArtwork(
+    BuildContext context,
+    PlayerController player,
+    ThemeData theme,
+  ) {
+    final track = player.currentTrack;
+    if (track == null) {
+      return SizedBox(
+        width: 58.0,
+        height: 58.0,
+        child: Container(
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          child: Icon(
+            Broken.musicnote,
+            size: 30.0,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: 58.0,
+      height: 58.0,
+      child: FutureBuilder<ImageProvider?>(
+        future: ArtworkService.inst.getArtworkImage(track),
+        builder: (context, snapshot) {
+          final image = snapshot.data;
+          if (image == null) {
+            return Container(
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              child: Icon(
+                Broken.musicnote,
+                size: 30.0,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            );
+          }
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(8.0),
+            child: Image(image: image, fit: BoxFit.cover),
+          );
+        },
+      ),
+    );
+  }
+
+  void _openPlayer(BuildContext context) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const PlayerPage(),
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 250),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+            child: child,
+          );
+        },
       ),
     );
   }

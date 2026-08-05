@@ -1,0 +1,529 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+
+import '../../controller/current_color_controller.dart';
+import '../../controller/player_controller.dart';
+import '../../core/broken_icons.dart';
+import '../../core/extensions.dart';
+import '../../services/artwork_service.dart';
+import 'lyrics_view.dart';
+
+class PlayerPage extends StatefulWidget {
+  const PlayerPage({super.key});
+
+  @override
+  State<PlayerPage> createState() => _PlayerPageState();
+}
+
+class _PlayerPageState extends State<PlayerPage> {
+  bool _showLyrics = false;
+  bool _showQueue = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _extractColor();
+    });
+  }
+
+  Future<void> _extractColor() async {
+    if (!mounted) return;
+    final player = context.read<PlayerController>();
+    final colorCtrl = context.read<CurrentColorController>();
+    if (player.currentTrack != null) {
+      final image = await ArtworkService.inst.getArtworkImage(
+        player.currentTrack!,
+      );
+      if (mounted) colorCtrl.extractFromImage(image);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final player = context.watch<PlayerController>();
+    final colorCtrl = context.watch<CurrentColorController>();
+    final accent = colorCtrl.accentColor;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarBrightness: theme.brightness == Brightness.dark
+            ? Brightness.light
+            : Brightness.dark,
+        statusBarIconBrightness: theme.brightness == Brightness.dark
+            ? Brightness.light
+            : Brightness.dark,
+      ),
+      child: Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                accent.withOpacityExt(0.15),
+                theme.scaffoldBackgroundColor,
+              ],
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                _buildAppBar(context, theme, player),
+                Expanded(
+                  child: _showLyrics
+                      ? const LyricsView()
+                      : _showQueue
+                      ? _buildQueueView(context, theme, player, accent)
+                      : _buildMainPlayer(context, theme, player, accent),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBar(
+    BuildContext context,
+    ThemeData theme,
+    PlayerController player,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Broken.arrow_down_2, size: 28),
+            onPressed: () => Navigator.pop(context),
+          ),
+          Expanded(
+            child: Column(
+              children: [
+                Text(
+                  'Reproduciendo de',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  player.album,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(
+              _showLyrics ? Broken.musicnote : Broken.document_code,
+              size: 24,
+            ),
+            onPressed: () {
+              setState(() {
+                _showLyrics = !_showLyrics;
+                _showQueue = false;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainPlayer(
+    BuildContext context,
+    ThemeData theme,
+    PlayerController player,
+    Color accent,
+  ) {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        _buildArtwork(context, player, accent, theme),
+        const SizedBox(height: 32),
+        _buildTrackInfo(context, player, theme),
+        const SizedBox(height: 24),
+        _buildProgressBar(context, player, accent),
+        const SizedBox(height: 16),
+        _buildControls(context, player, accent),
+        const SizedBox(height: 12),
+        _buildExtraButtons(context, player, accent),
+      ],
+    );
+  }
+
+  Widget _buildArtwork(
+    BuildContext context,
+    PlayerController player,
+    Color accent,
+    ThemeData theme,
+  ) {
+    final track = player.currentTrack;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+      child: FutureBuilder<ImageProvider?>(
+        future: track != null
+            ? ArtworkService.inst.getArtworkImage(track)
+            : null,
+        builder: (context, snapshot) {
+          final imageProvider = snapshot.data;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: 280,
+            height: 280,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withOpacityExt(0.3),
+                  blurRadius: 40,
+                  offset: const Offset(0, 16),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: imageProvider != null
+                  ? Image(image: imageProvider, fit: BoxFit.cover)
+                  : Container(
+                      color: theme.cardColor,
+                      child: Icon(
+                        Broken.musicnote,
+                        size: 80,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTrackInfo(
+    BuildContext context,
+    PlayerController player,
+    ThemeData theme,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+      child: Column(
+        children: [
+          Text(
+            player.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            player.artist,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressBar(
+    BuildContext context,
+    PlayerController player,
+    Color accent,
+  ) {
+    final position = player.position;
+    final duration = player.duration;
+    final maxMs = duration.inMilliseconds > 0
+        ? duration.inMilliseconds.toDouble()
+        : 1.0;
+    final currentMs = position.inMilliseconds.toDouble().clamp(0.0, maxMs);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        children: [
+          SliderTheme(
+            data: SliderThemeData(
+              activeTrackColor: accent,
+              inactiveTrackColor: accent.withOpacityExt(0.2),
+              thumbColor: accent,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+              trackHeight: 3,
+            ),
+            child: Slider(
+              value: currentMs,
+              max: maxMs,
+              onChanged: (value) {
+                player.seek(Duration(milliseconds: value.toInt()));
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _formatDuration(position),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  _formatDuration(duration),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildControls(
+    BuildContext context,
+    PlayerController player,
+    Color accent,
+  ) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final onVariant = Theme.of(context).colorScheme.onSurfaceVariant;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _controlBtn(
+            icon: Broken.shuffle,
+            size: 24,
+            color: player.shuffleMode ? accent : onVariant,
+            onTap: player.toggleShuffleMode,
+          ),
+          const Spacer(),
+          _controlBtn(
+            icon: Broken.previous,
+            size: 32,
+            color: onSurface,
+            onTap: player.skipPrevious,
+          ),
+          const Spacer(),
+          _playBtn(player, accent),
+          const Spacer(),
+          _controlBtn(
+            icon: Broken.next,
+            size: 32,
+            color: onSurface,
+            onTap: player.skipNext,
+          ),
+          const Spacer(),
+          _controlBtn(
+            icon: _repeatIcon(player.repeatMode),
+            size: 24,
+            color: player.repeatMode != ArcRepeatMode.off ? accent : onVariant,
+            onTap: player.toggleArcRepeatMode,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _controlBtn({
+    required IconData icon,
+    required double size,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Icon(icon, size: size, color: color),
+    );
+  }
+
+  Widget _playBtn(PlayerController player, Color accent) {
+    return GestureDetector(
+      onTap: player.playPause,
+      child: Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          color: accent,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: accent.withOpacityExt(0.4),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Icon(
+          player.isPlaying ? Broken.pause : Broken.play,
+          size: 32,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExtraButtons(
+    BuildContext context,
+    PlayerController player,
+    Color accent,
+  ) {
+    final onVariant = Theme.of(context).colorScheme.onSurfaceVariant;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 48.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(Broken.heart, size: 22),
+            onPressed: () {},
+            color: onVariant,
+          ),
+          IconButton(
+            icon: Icon(
+              Broken.document_code,
+              size: 22,
+              color: _showLyrics ? accent : onVariant,
+            ),
+            onPressed: () {
+              setState(() {
+                _showLyrics = !_showLyrics;
+                _showQueue = false;
+              });
+            },
+          ),
+          IconButton(
+            icon: Icon(
+              Broken.play_circle,
+              size: 22,
+              color: _showQueue ? accent : onVariant,
+            ),
+            onPressed: () {
+              setState(() {
+                _showQueue = !_showQueue;
+                _showLyrics = false;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQueueView(
+    BuildContext context,
+    ThemeData theme,
+    PlayerController player,
+    Color accent,
+  ) {
+    final queue = player.queue;
+    if (queue.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Broken.play_circle,
+              size: 48,
+              color: theme.colorScheme.onSurfaceVariant.withOpacityExt(0.3),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Cola vacía',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant.withOpacityExt(0.5),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: queue.length,
+      itemBuilder: (context, index) {
+        final track = queue[index];
+        final isCurrent = index == player.queueIndex;
+
+        return ListTile(
+          leading: isCurrent
+              ? SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Icon(Broken.play, color: accent),
+                )
+              : null,
+          title: Text(
+            track.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: isCurrent ? accent : null,
+              fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+          subtitle: Text(
+            track.artist,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: isCurrent
+                  ? accent.withOpacityExt(0.7)
+                  : theme.colorScheme.onSurfaceVariant,
+              fontSize: 13,
+            ),
+          ),
+          trailing: IconButton(
+            icon: const Icon(Broken.close_circle, size: 20),
+            onPressed: () => player.removeFromQueue(index),
+            color: theme.colorScheme.onSurfaceVariant.withOpacityExt(0.5),
+          ),
+          onTap: () => player.playTrack(track, index: index),
+        );
+      },
+    );
+  }
+
+  IconData _repeatIcon(ArcRepeatMode mode) {
+    switch (mode) {
+      case ArcRepeatMode.off:
+        return Broken.refresh;
+      case ArcRepeatMode.all:
+        return Broken.repeat;
+      case ArcRepeatMode.one:
+        return Broken.repeate_one;
+    }
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes;
+    final seconds = d.inSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+}
