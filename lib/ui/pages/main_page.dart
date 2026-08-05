@@ -2,14 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../controller/indexer_controller.dart';
 import '../../controller/navigator_controller.dart';
-import '../../controller/settings_controller.dart';
+import '../../controller/player_controller.dart';
+
 import '../../core/broken_icons.dart';
 import '../../core/enums.dart';
 import '../../core/extensions.dart';
 import '../miniplayer/miniplayer_bar.dart';
+import '../pages/settings_page.dart';
 import '../widgets/amoled_glow_effect.dart';
+import 'albums_page.dart';
+import 'artists_page.dart';
 import 'home_page.dart';
+import 'tracks_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -31,16 +37,27 @@ class _MainPageState extends State<MainPage> {
 
   static const _tabPages = <Widget>[
     HomePage(),
-    _PlaceholderPage(title: 'Songs'),
-    _PlaceholderPage(title: 'Albums'),
-    _PlaceholderPage(title: 'Artists'),
+    TracksPage(),
+    AlbumsPage(),
+    ArtistsPage(),
     _PlaceholderPage(title: 'Folders'),
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final hasPermission = await IndexerController.inst.checkPermission();
+      if (hasPermission) {
+        IndexerController.inst.scanDevice();
+      }
+      PlayerController.inst.initMediaSessionCommands();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final nav = context.watch<NavigatorController>();
-    final settings = context.watch<SettingsController>();
     final theme = Theme.of(context);
     final currentIndex = nav.currentPageIndex;
 
@@ -59,6 +76,17 @@ class _MainPageState extends State<MainPage> {
         appBar: AppBar(
           title: Text(_tabs[currentIndex].label),
           centerTitle: false,
+          actions: [
+            IconButton(
+              icon: const Icon(Broken.settings),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsPage()),
+                );
+              },
+            ),
+          ],
         ),
         body: Stack(
           children: [
@@ -69,7 +97,7 @@ class _MainPageState extends State<MainPage> {
         bottomNavigationBar: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            MiniplayerBar(accentColor: settings.mainColor),
+            const MiniplayerBar(),
             NavigationBarTheme(
               data: NavigationBarThemeData(
                 backgroundColor: theme.navigationBarTheme.backgroundColor,
