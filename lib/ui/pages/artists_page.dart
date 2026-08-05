@@ -3,10 +3,12 @@ import '../../services/media_store_service.dart';
 import 'package:provider/provider.dart';
 
 import '../../controller/indexer_controller.dart';
+import '../../controller/player_controller.dart';
 import '../../core/broken_icons.dart';
 import '../../core/dimensions.dart';
 import '../../core/extensions.dart';
 import '../../data/models/artist.dart';
+
 import '../../services/artwork_service.dart';
 
 class ArtistsPage extends StatelessWidget {
@@ -65,6 +67,7 @@ class _ArtistTile extends StatelessWidget {
     final theme = Theme.of(context);
 
     return ListTile(
+      onTap: () => _showArtistTracks(context, artist),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: ClipOval(
         child: SizedBox(
@@ -88,6 +91,136 @@ class _ArtistTile extends StatelessWidget {
       ),
     );
   }
+}
+
+void _showArtistTracks(BuildContext context, ArcArtist artist) {
+  final indexer = context.read<IndexerController>();
+  final tracks = indexer.getTracksByArtist(artist.artist);
+
+  if (tracks.isEmpty) return;
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) {
+      final theme = Theme.of(context);
+      return DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (context, scrollController) {
+          return Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurfaceVariant.withAlpha(60),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    ClipOval(
+                      child: SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: _ArtistArtwork(artistId: artist.id),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            artist.artist,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '${tracks.length} songs',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Broken.play, color: theme.colorScheme.primary),
+                      onPressed: () {
+                        PlayerController.inst.playTrack(
+                          tracks.first,
+                          queue: tracks,
+                          index: 0,
+                        );
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  itemCount: tracks.length,
+                  itemBuilder: (context, index) {
+                    final track = tracks[index];
+                    return ListTile(
+                      dense: true,
+                      leading: Text(
+                        '${index + 1}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      title: Text(
+                        track.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      subtitle: Text(
+                        track.album,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      trailing: Text(
+                        track.durationText,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      onTap: () {
+                        PlayerController.inst.playTrack(
+                          track,
+                          queue: tracks,
+                          index: index,
+                        );
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
 }
 
 class _ArtistArtwork extends StatefulWidget {

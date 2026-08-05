@@ -147,16 +147,17 @@ class _PlayerPageState extends State<PlayerPage> {
   ) {
     return Column(
       children: [
-        const SizedBox(height: 16),
-        _buildArtwork(context, player, accent, theme),
-        const SizedBox(height: 32),
+        Expanded(
+          child: Center(child: _buildArtwork(context, player, accent, theme)),
+        ),
         _buildTrackInfo(context, player, theme),
         const SizedBox(height: 24),
-        _buildProgressBar(context, player, accent),
-        const SizedBox(height: 16),
         _buildControls(context, player, accent),
         const SizedBox(height: 12),
+        _buildProgressBar(context, player, accent),
+        const SizedBox(height: 8),
         _buildExtraButtons(context, player, accent),
+        const SizedBox(height: 8),
       ],
     );
   }

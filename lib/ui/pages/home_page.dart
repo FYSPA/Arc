@@ -3,6 +3,7 @@ import '../../services/media_store_service.dart';
 import 'package:provider/provider.dart';
 
 import '../../controller/indexer_controller.dart';
+import '../../controller/player_controller.dart';
 import '../../core/broken_icons.dart';
 import '../../core/extensions.dart';
 import '../../data/models/track.dart';
@@ -34,7 +35,10 @@ class HomePage extends StatelessWidget {
             theme: theme,
           )
         else
-          ...recentTracks.map((track) => _HomeTrackTile(track: track)),
+          ...recentTracks.map(
+            (track) =>
+                _HomeTrackTile(track: track, allTracks: indexer.trackList),
+          ),
         const SizedBox(height: 24.0),
         _SectionTitle(title: 'Recently Played', theme: theme),
         const SizedBox(height: 8.0),
@@ -151,16 +155,25 @@ class _EmptyState extends StatelessWidget {
 
 class _HomeTrackTile extends StatelessWidget {
   final ArcTrack track;
+  final List<ArcTrack> allTracks;
 
-  const _HomeTrackTile({required this.track});
+  const _HomeTrackTile({required this.track, required this.allTracks});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final index = allTracks.indexOf(track);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       child: ListTile(
+        onTap: () {
+          PlayerController.inst.playTrack(
+            track,
+            queue: allTracks,
+            index: index >= 0 ? index : 0,
+          );
+        },
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(8),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:arc_engine/arc_engine.dart';
 import 'package:flutter/foundation.dart';
@@ -24,6 +25,7 @@ class PlayerController extends ChangeNotifier {
   List<ArcTrack> _queue = [];
   int _queueIndex = -1;
 
+  bool _streamsInitialized = false;
   StreamSubscription<PlaybackState>? _stateSub;
   StreamSubscription<Duration>? _posSub;
   StreamSubscription<String>? _nameSub;
@@ -65,19 +67,11 @@ class PlayerController extends ChangeNotifier {
     return _currentTrack?.album ?? '';
   }
 
-  void _initStreams() {
-    _stateSub?.cancel();
-    _posSub?.cancel();
-    _nameSub?.cancel();
-    _abortSub?.cancel();
-    _metaSub?.cancel();
+  void _ensureStreams() {
+    if (_streamsInitialized) return;
+    _streamsInitialized = true;
 
     _stateSub = _player.onStateChanged.listen((state) {
-      final playing = state == PlaybackState.playing;
-      if (_isPlaying != playing) {
-        _isPlaying = playing;
-        notifyListeners();
-      }
       if (state == PlaybackState.stopped && _currentTrack != null) {
         _position = Duration.zero;
         notifyListeners();
@@ -124,14 +118,47 @@ class PlayerController extends ChangeNotifier {
   }
 
   void _onGaplessAborted(String failedName) {
-    if (_currentTrack != null && _currentTrack!.filePath != null) {
-      final result = _player.play(_currentTrack!.filePath!);
-      if (result == 0) {
-        _duration = _player.duration;
-        _metadata = _player.metadata;
-        _queueNext();
+    debugPrint('[ARC] gapless aborted: $failedName');
+    _skipToNextOnFailure();
+  }
+
+  void _skipToNextOnFailure() {
+    if (_queue.isEmpty) {
+      _isPlaying = false;
+      notifyListeners();
+      return;
+    }
+
+    final nextIndex = _queueIndex + 1;
+    if (nextIndex < _queue.length) {
+      final next = _queue[nextIndex];
+      if (next.filePath != null && File(next.filePath!).existsSync()) {
+        debugPrint('[ARC] skipping failed track, playing: ${next.title}');
+        playTrack(next, index: nextIndex);
+      } else {
+        _queueIndex = nextIndex;
+        _skipToNextOnFailure();
+      }
+    } else if (_repeatMode == ArcRepeatMode.all) {
+      final first = _queue.first;
+      if (first.filePath != null && File(first.filePath!).existsSync()) {
+        debugPrint('[ARC] skipping failed track, looping to: ${first.title}');
+        playTrack(first, index: 0);
+      } else {
+        _isPlaying = false;
+        _position = Duration.zero;
+        _duration = Duration.zero;
+        _metadata = null;
+        _currentTrack = null;
         notifyListeners();
       }
+    } else {
+      _isPlaying = false;
+      _position = Duration.zero;
+      _duration = Duration.zero;
+      _metadata = null;
+      _currentTrack = null;
+      notifyListeners();
     }
   }
 
@@ -173,9 +200,20 @@ class PlayerController extends ChangeNotifier {
     List<ArcTrack>? queue,
     int? index,
   }) async {
-    if (track.filePath == null || track.filePath!.isEmpty) return;
+    _ensureStreams();
 
-    _initStreams();
+    if (track.filePath == null || track.filePath!.isEmpty) {
+      debugPrint('[ARC] track has no filePath: ${track.title}');
+      _skipToNextOnFailure();
+      return;
+    }
+
+    if (!File(track.filePath!).existsSync()) {
+      debugPrint('[ARC] file not found on disk: ${track.filePath}');
+      _skipToNextOnFailure();
+      return;
+    }
+
     _currentTrack = track;
     _position = Duration.zero;
     _metadata = null;
@@ -197,7 +235,10 @@ class PlayerController extends ChangeNotifier {
       _isPlaying = true;
       _queueNext();
     } else {
+      debugPrint('[ARC] play() failed for: ${track.title} (${track.filePath})');
       _isPlaying = false;
+      _skipToNextOnFailure();
+      return;
     }
 
     _updateMediaSession();
@@ -212,6 +253,9 @@ class PlayerController extends ChangeNotifier {
     } else {
       _player.resume();
     }
+    _isPlaying = !_isPlaying;
+    _updateMediaSession();
+    notifyListeners();
   }
 
   void skipNext() {
@@ -364,6 +408,7 @@ class PlayerController extends ChangeNotifier {
   }
 
   void initMediaSessionCommands() {
+    _ensureStreams();
     MediaSession.onCommand.listen((cmd) {
       switch (cmd) {
         case MediaCommandPlay():

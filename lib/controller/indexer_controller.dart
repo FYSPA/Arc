@@ -40,6 +40,14 @@ class IndexerController extends ChangeNotifier {
   bool get hasMoreTracks => _hasMoreTracks;
   bool get isLoadingMore => _isLoadingMore;
 
+  List<ArcTrack> getTracksByArtist(String artistName) {
+    return _trackList.where((t) => t.artist == artistName).toList();
+  }
+
+  List<ArcTrack> getTracksByAlbum(String albumName) {
+    return _trackList.where((t) => t.album == albumName).toList();
+  }
+
   List<ArcTrack> get _sortedTracks {
     final list = List<ArcTrack>.from(_trackList);
     switch (_currentSort) {

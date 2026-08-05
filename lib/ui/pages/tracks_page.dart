@@ -128,6 +128,7 @@ class _TracksPageState extends State<TracksPage> {
         _Header(
           indexer: indexer,
           trackCount: tracks.length,
+          tracks: tracks,
           showSearch: _showSearch,
           searchController: _searchController,
           onSearchChanged: (q) => setState(() => _searchQuery = q),
@@ -178,6 +179,7 @@ class _TracksPageState extends State<TracksPage> {
 class _Header extends StatelessWidget {
   final IndexerController indexer;
   final int trackCount;
+  final List<ArcTrack> tracks;
   final bool showSearch;
   final TextEditingController searchController;
   final ValueChanged<String> onSearchChanged;
@@ -186,6 +188,7 @@ class _Header extends StatelessWidget {
   const _Header({
     required this.indexer,
     required this.trackCount,
+    required this.tracks,
     required this.showSearch,
     required this.searchController,
     required this.onSearchChanged,
@@ -204,7 +207,7 @@ class _Header extends StatelessWidget {
             children: [
               _SortButton(indexer: indexer),
               const SizedBox(width: 8),
-              _PlayButton(trackCount: trackCount),
+              _PlayButton(trackCount: trackCount, tracks: tracks),
               const Spacer(),
               Text(
                 '$trackCount tracks',
@@ -331,15 +334,24 @@ class _SortButton extends StatelessWidget {
 
 class _PlayButton extends StatelessWidget {
   final int trackCount;
+  final List<ArcTrack> tracks;
 
-  const _PlayButton({required this.trackCount});
+  const _PlayButton({required this.trackCount, required this.tracks});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return IconButton(
-      onPressed: trackCount > 0 ? () {} : null,
+      onPressed: trackCount > 0
+          ? () {
+              PlayerController.inst.playTrack(
+                tracks.first,
+                queue: tracks,
+                index: 0,
+              );
+            }
+          : null,
       icon: Icon(
         Broken.play,
         size: 24,
