@@ -51,7 +51,10 @@ class MainActivity : FlutterActivity() {
                     "queryArtwork" -> {
                         val id = call.argument<Int>("id")!!
                         val type = call.argument<Int>("type")!!
-                        result.success(queryArtwork(id, type))
+                        Thread {
+                            val artwork = queryArtwork(id, type)
+                            runOnUiThread { result.success(artwork) }
+                        }.start()
                     }
                     else -> result.notImplemented()
                 }
@@ -233,16 +236,16 @@ class MainActivity : FlutterActivity() {
         }
         val uri = ContentUris.withAppendedId(contentUri, id.toLong())
         return try {
-            val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
             val options = BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
+                inSampleSize = calculateInSampleSize(bounds, 300, 300)
             }
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
-
-            options.inSampleSize = calculateInSampleSize(options, 300, 300)
-            options.inJustDecodeBounds = false
-
-            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) ?: return null
+            val bitmap = contentResolver.openInputStream(uri)?.use {
+                BitmapFactory.decodeStream(it, null, options)
+            } ?: return null
             val output = ByteArrayOutputStream()
             bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, output)
             bitmap.recycle()
