@@ -1,7 +1,8 @@
 # Arc — Development Roadmap
 
-> Last updated: 2026-08-04
+> Last updated: 2026-08-05
 > Stack: Flutter + Provider + arc_engine + arx_canvas
+> Strategy: **Logic first → Design → Performance**
 
 ---
 
@@ -15,11 +16,11 @@
 - [x] `broken_icons.dart` — 900+ custom icons
 
 ### Controller
-- [x] `settings_controller.dart` — Theme, language, performance, folders, media store + **SharedPreferences persistence**
+- [x] `settings_controller.dart` — Theme, language, performance, folders, media store + SharedPreferences persistence
 - [x] `navigator_controller.dart` — Navigation state (currentPageIndex, navigateTo)
-- [x] `player_controller.dart` — arc_engine wrapper, queue, gapless, MediaSession
+- [x] `player_controller.dart` — arc_engine wrapper, queue, gapless, MediaSession, failure skip
 - [x] `current_color_controller.dart` — Dynamic accent color from artwork
-- [x] `indexer_controller.dart` — Chunked MediaStore scanning + folder filtering
+- [x] `indexer_controller.dart` — Chunked MediaStore scanning + folder filtering + sort cache
 
 ### Models
 - [x] `track.dart` — ArcTrack model (fromMap)
@@ -29,7 +30,7 @@
 ### Services
 - [x] `permission_service.dart` — Custom MethodChannel for Android 13+ audio permission
 - [x] `media_store_service.dart` — Custom MethodChannel for songs, albums, artists, folders, artwork
-- [x] `artwork_service.dart` — Two-tier cache + getArtworkImage() + getCachedPath()
+- [x] `artwork_service.dart` — Two-tier cache + throttle pool + off-main-thread Kotlin decode
 
 ### UI — Onboarding
 - [x] `onboarding_page.dart` — 3-page PageView (Appearance, Permissions, Library)
@@ -50,7 +51,7 @@
 - [x] `library_tabs_dialog.dart` — Tab configuration
 
 ### UI — Main Page + Miniplayer
-- [x] `main_page.dart` — Scaffold + AppBar + IndexedStack + NavigationBar M3 + Settings button
+- [x] `main_page.dart` — Scaffold + AppBar + IndexedStack + NavigationBar M3
 - [x] `miniplayer_bar.dart` — Reads from PlayerController, play/pause, opens PlayerPage
 - [x] `home_page.dart` — Recently Added, Top Artists/Albums sections
 - [x] `albums_page.dart` — 2-column grid with artwork
@@ -62,114 +63,154 @@
 - [x] `lyrics_view.dart` — Fetches lyrics via arx_canvas, handles track changes + race conditions
 
 ### UI — Settings
-- [x] `settings_page.dart` — 4 sections: Appearance, Library, Audio, About + **Secrets Keys**
+- [x] `settings_page.dart` — 4 sections: Appearance, Library, Audio, About + Secrets Keys
 
 ### Splash
-- [x] `splash_page.dart` — GIF with ShaderMask for dark mode, conditional routing to onboarding/main
+- [x] `splash_page.dart` — GIF with ShaderMask for dark mode, preload data during splash
 
 ### Infrastructure
 - [x] Fonts registered (LexendDeca 9 weights + Broken icons)
 - [x] Package ID changed to `dev.yh.arc_app`
 - [x] Navigation flow: Splash → Onboarding → MainPage
-- [x] **SharedPreferences persistence** — All settings survive app restart
-- [x] **Onboarding shown only once** — `_isOnboarded` persisted to disk
-- [x] **arc_engine** — Native C++ audio playback (FFI)
-- [x] **arx_canvas** — Lyrics fetching (LRCLIB, Genius, Musixmatch, etc.)
+- [x] SharedPreferences persistence — All settings survive app restart
+- [x] Onboarding shown only once — `_isOnboarded` persisted to disk
+- [x] arc_engine — Native C++ audio playback (FFI) updated to c6918fb
+- [x] arx_canvas — Lyrics fetching (LRCLIB, Genius, Musixmatch, etc.)
 
 ---
 
-## Phase 3 — Library (Albums, Artists, Playlists)
+## Phase 3A — Album Detail Page
 
 > **Status:** Pending
 
-### 3.1 `albums_page.dart`
-- [x] Album grid with artwork (done in Phase 2)
-- [ ] Tap → album tracks
-
-### 3.2 `artists_page.dart`
-- [x] Artist grid (done in Phase 2)
-- [ ] Tap → artist tracks
-
-### 3.3 `playlists_page.dart`
-- [ ] Playlist list
-- [ ] Create playlist
-
-### 3.4 `playlist_controller.dart`
-- [ ] Playlist CRUD
-- [ ] Add/remove tracks
+- [ ] `album_detail_page.dart` — Full page (not bottom sheet)
+- [ ] Album artwork header + track list
+- [ ] Play all / shuffle buttons
+- [ ] Tap track → play with album queue
+- [ ] Navigation from `albums_page.dart` tap
 
 ---
 
-## Phase 4 — Search
+## Phase 3B — Artist Detail Page
 
 > **Status:** Pending
 
-### 4.1 `search_page.dart`
-- [ ] Search field
-- [ ] Results by category (tracks, albums, artists)
+- [ ] `artist_detail_page.dart` — Full page (not bottom sheet)
+- [ ] Artist artwork + track list grouped by album
+- [ ] Play all / shuffle buttons
+- [ ] Tap track → play with artist queue
+- [ ] Navigation from `artists_page.dart` tap
 
 ---
 
-## Phase 6 — Advanced Dialogs
+## Phase 3C — Folders Page
 
 > **Status:** Pending
 
-### 6.1 `track_info_dialog.dart`
-- [ ] Detailed track info with dynamic color
-
-### 6.2 `common_dialogs.dart`
-- [ ] Universal menu
-- [ ] Add to playlist, queue, favorites
-
-### 6.3 `edit_tags_dialog.dart`
-- [ ] Edit track metadata
+- [ ] `folders_page.dart` — Real implementation (replace placeholder)
+- [ ] List folders with song count
+- [ ] Tap folder → folder tracks
+- [ ] Tap track → play with folder queue
+- [ ] Uses `queryFolders()` from MediaStoreService
 
 ---
 
-## Phase 7 — arx_canvas Full Integration
-
-> **Status:** Partially Complete
-
-### 7.1 Lyrics
-- [x] Plain lyrics fetching via LyricsService (multi-provider fallback)
-- [x] Track change detection + race condition fix
-- [x] Secrets keys for Genius, Musixmatch, Spotify
-- [ ] Synced lyrics with auto-scroll
-- [ ] Line highlighting
-
-### 7.2 Animated artwork
-- [ ] Apple Music animated artwork
-- [ ] Spotify Canvas
-- [ ] Asset caching
-
----
-
-## Phase 8 — Final Polish
+## Phase 4 — Global Search
 
 > **Status:** Pending
 
-- [ ] Smooth page transitions
-- [ ] Optimized scroll
-- [ ] Tinted popups
-- [ ] Animated widgets
+- [ ] `search_page.dart` — Dedicated search tab or overlay
+- [ ] Search across tracks, albums, artists simultaneously
+- [ ] Results grouped by category with section headers
+- [ ] Debounced input (300ms)
+- [ ] Tap result → navigate to detail or play
+
+---
+
+## Phase 5A — Track Context Menu
+
+> **Status:** Pending
+
+- [ ] `track_context_menu.dart` — Bottom sheet menu on long-press
+- [ ] Options: Add to queue, Play next, Add to playlist, Share, Track info
+- [ ] Works from any track list (home, tracks, album detail, artist detail)
+
+---
+
+## Phase 5B — Queue Management
+
+> **Status:** Pending
+
+- [ ] Drag-to-reorder in queue view
+- [ ] Swipe to remove from queue
+- [ ] Clear queue button
+- [ ] Save queue as playlist
+
+---
+
+## Phase 6 — Synced Lyrics
+
+> **Status:** Pending
+
+- [ ] Parse synced lyrics (LRC format) from arx_canvas
+- [ ] Auto-scroll to current line based on playback position
+- [ ] Highlight current line with accent color
+- [ ] Tap line to seek
+- [ ] Fallback to plain lyrics when synced unavailable
+
+---
+
+## Phase 7 — Animated Artwork
+
+> **Status:** Pending
+
+- [ ] Animated artwork support via arx_canvas
+- [ ] GIF/video artwork display in player page
+- [ ] Asset caching for animated artwork
+- [ ] Graceful fallback to static artwork
+
+---
+
+## Phase 8 — Design Polish (Diseño)
+
+> **Status:** Pending (after all logic is complete)
+
+- [ ] Smooth page transitions (Hero animations)
+- [ ] Tinted popups/dialogs with dynamic color
+- [ ] Animated widgets (micro-interactions)
+- [ ] Custom AppBar designs per page
 - [ ] Accessibility (semantics)
-- [ ] Performance profiling
-- [ ] Testing
+- [ ] Theme refinement
+
+---
+
+## Phase 9 — Performance (Performance)
+
+> **Status:** Pending (after design is complete)
+
+- [ ] Performance profiling with DevTools
+- [ ] Scroll optimization (repaint boundaries, cache extent)
+- [ ] Image memory management
+- [ ] Reduce widget rebuilds
+- [ ] Lazy loading optimization
+- [ ] APK size optimization
 
 ---
 
 ## Summary
 
-| Phase | Status | Dependencies |
-|-------|--------|-------------|
-| Core | ✅ Completed | — |
-| Onboarding | ✅ Completed | Core |
-| Main Page + Miniplayer | ✅ Completed | Core |
-| 1. Player Page | ✅ Completed | Main Page |
-| 2. Indexer + Tracks | ✅ Completed | Main Page |
-| 3. Library | Pending | Phase 2 |
-| 4. Search | Pending | Phase 2 |
-| 5. Settings | ✅ Completed | Main Page |
-| 6. Dialogs | Pending | Phase 2 |
-| 7. arx_canvas Full | Partial | Phase 1 |
-| 8. Polish | Pending | All |
+| Phase | Description | Status | Strategy |
+|-------|-------------|--------|----------|
+| Core | Foundation | ✅ Completed | — |
+| 1. Player | Playback UI | ✅ Completed | — |
+| 2. Indexer | Track scanning + listing | ✅ Completed | — |
+| 3A | Album detail page | ⏳ Pending | Logic |
+| 3B | Artist detail page | ⏳ Pending | Logic |
+| 3C | Folders page | ⏳ Pending | Logic |
+| 4 | Global search | ⏳ Pending | Logic |
+| 5A | Track context menu | ⏳ Pending | Logic |
+| 5B | Queue management | ⏳ Pending | Logic |
+| 6 | Synced lyrics | ⏳ Pending | Logic |
+| 7 | Animated artwork | ⏳ Pending | Logic |
+| 8 | Design polish | ⏳ Pending | Design |
+| 9 | Performance | ⏳ Pending | Performance |
