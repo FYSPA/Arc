@@ -23,6 +23,8 @@ class IndexerController extends ChangeNotifier {
   String _errorMessage = '';
   SortType _currentSort = SortType.name;
   bool _sortReverse = false;
+  List<ArcTrack>? _sortedTracksCache;
+  bool _sortedTracksDirty = true;
 
   int _loadedCount = 0;
   bool _hasMoreTracks = true;
@@ -40,15 +42,48 @@ class IndexerController extends ChangeNotifier {
   bool get hasMoreTracks => _hasMoreTracks;
   bool get isLoadingMore => _isLoadingMore;
 
+  static String _normalizeName(String name) {
+    return name
+        .replaceAll(RegExp(r'[\u00A0\u2000-\u200B\u202F\u205F\u3000]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim()
+        .toLowerCase();
+  }
+
+  static final _collabSep = RegExp(
+    r',\s*|&\s*|\s+feat\.?\s+|\s+ft\.?\s+|\s+vs\.?\s+|\s+x\s+',
+    caseSensitive: false,
+  );
+
+  static String _primaryArtist(String artist) {
+    return _normalizeName(artist.split(_collabSep).first);
+  }
+
   List<ArcTrack> getTracksByArtist(String artistName) {
-    return _trackList.where((t) => t.artist == artistName).toList();
+    final primary = _primaryArtist(artistName);
+    return _trackList
+        .where((t) => _primaryArtist(t.artist) == primary)
+        .toList();
   }
 
   List<ArcTrack> getTracksByAlbum(String albumName) {
-    return _trackList.where((t) => t.album == albumName).toList();
+    final normalized = _normalizeName(albumName);
+    return _trackList
+        .where((t) => _normalizeName(t.album) == normalized)
+        .toList();
+  }
+
+  List<ArcTrack> getTracksByFolder(String folderPath) {
+    return _trackList
+        .where((t) => t.filePath?.startsWith(folderPath) == true)
+        .toList();
   }
 
   List<ArcTrack> get _sortedTracks {
+    if (_sortedTracksCache != null && !_sortedTracksDirty) {
+      return _sortedTracksCache!;
+    }
+    final sw = Stopwatch()..start();
     final list = List<ArcTrack>.from(_trackList);
     switch (_currentSort) {
       case SortType.name:
@@ -62,8 +97,25 @@ class IndexerController extends ChangeNotifier {
       case SortType.album:
         list.sort((a, b) => a.album.compareTo(b.album));
     }
-    if (_sortReverse) return list.reversed.toList();
-    return list;
+    if (_sortReverse) {
+      _sortedTracksCache = list.reversed.toList();
+    } else {
+      _sortedTracksCache = list;
+    }
+    _sortedTracksDirty = false;
+    sw.stop();
+    if (sw.elapsedMilliseconds > 5) {
+      debugPrint(
+        '[ARC] _sortedTracks: ${sw.elapsedMilliseconds}ms '
+        '(${list.length} items, sort=${_currentSort.name})',
+      );
+    }
+    return _sortedTracksCache!;
+  }
+
+  void _invalidateSortCache() {
+    _sortedTracksDirty = true;
+    _sortedTracksCache = null;
   }
 
   List<ArcTrack> recentlyAdded({int limit = 5}) {
@@ -79,6 +131,7 @@ class IndexerController extends ChangeNotifier {
       _currentSort = type;
       _sortReverse = false;
     }
+    _invalidateSortCache();
     notifyListeners();
   }
 
@@ -109,12 +162,16 @@ class IndexerController extends ChangeNotifier {
   }
 
   Future<void> scanDevice() async {
+    if (_isLoading) return;
     _isLoading = true;
     _hasError = false;
     _errorMessage = '';
     _loadedCount = 0;
     _hasMoreTracks = true;
     _trackList = [];
+    _albumList = [];
+    _artistList = [];
+    _invalidateSortCache();
     notifyListeners();
 
     try {
@@ -149,14 +206,36 @@ class IndexerController extends ChangeNotifier {
 
       try {
         final albumMaps = await media.queryAlbums();
-        _albumList = albumMaps.map(ArcAlbum.fromMap).toList();
+        final rawAlbums = albumMaps.map(ArcAlbum.fromMap).toList();
+        final albumByName = <String, ArcAlbum>{};
+        for (final album in rawAlbums) {
+          final key = _normalizeName(album.album);
+          final existing = albumByName[key];
+          if (existing == null ||
+              (album.numOfSongs ?? 0) > (existing.numOfSongs ?? 0)) {
+            albumByName[key] = album;
+          }
+        }
+        _albumList = albumByName.values.toList()
+          ..sort((a, b) => a.album.compareTo(b.album));
       } catch (e) {
         debugPrint('[ARC] scanDevice: queryAlbums ERROR $e');
       }
 
       try {
         final artistMaps = await media.queryArtists();
-        _artistList = artistMaps.map(ArcArtist.fromMap).toList();
+        final rawArtists = artistMaps.map(ArcArtist.fromMap).toList();
+        final artistByName = <String, ArcArtist>{};
+        for (final artist in rawArtists) {
+          final key = _primaryArtist(artist.artist);
+          final existing = artistByName[key];
+          if (existing == null ||
+              (artist.numOfSongs ?? 0) > (existing.numOfSongs ?? 0)) {
+            artistByName[key] = artist;
+          }
+        }
+        _artistList = artistByName.values.toList()
+          ..sort((a, b) => a.artist.compareTo(b.artist));
       } catch (e) {
         debugPrint('[ARC] scanDevice: queryArtists ERROR $e');
       }
@@ -178,6 +257,7 @@ class IndexerController extends ChangeNotifier {
     final end = (_loadedCount + _chunkSize).clamp(0, _allTracks.length);
     final chunk = _allTracks.sublist(_loadedCount, end);
     _trackList.addAll(chunk);
+    _invalidateSortCache();
     _loadedCount = end;
     _hasMoreTracks = _loadedCount < _allTracks.length;
     notifyListeners();
