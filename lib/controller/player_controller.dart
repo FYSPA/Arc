@@ -84,7 +84,9 @@ class PlayerController extends ChangeNotifier {
     });
 
     _nameSub = _player.onNameChanged.listen((name) {
-      _onGaplessTransition(name);
+      if (_player.isGaplessTransition) {
+        _onGaplessTransition(name);
+      }
     });
 
     _abortSub = _player.onGaplessAborted.listen((name) {
@@ -231,6 +233,11 @@ class PlayerController extends ChangeNotifier {
     final result = _player.play(track.filePath!);
     if (result == 0) {
       _duration = _player.duration;
+      if (_duration.inMilliseconds <= 0 &&
+          track.duration != null &&
+          track.duration! > 0) {
+        _duration = Duration(milliseconds: track.duration!);
+      }
       _metadata = _player.metadata;
       _isPlaying = true;
       _queueNext();
