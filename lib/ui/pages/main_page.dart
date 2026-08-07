@@ -2,18 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../../controller/indexer_controller.dart';
 import '../../controller/navigator_controller.dart';
-import '../../controller/player_controller.dart';
 
 import '../../core/broken_icons.dart';
 import '../../core/enums.dart';
-import '../../core/extensions.dart';
 import '../miniplayer/miniplayer_bar.dart';
 import '../pages/settings_page.dart';
 import '../widgets/amoled_glow_effect.dart';
 import 'albums_page.dart';
 import 'artists_page.dart';
+import 'folders_page.dart';
 import 'home_page.dart';
 import 'tracks_page.dart';
 
@@ -40,20 +38,8 @@ class _MainPageState extends State<MainPage> {
     TracksPage(),
     AlbumsPage(),
     ArtistsPage(),
-    _PlaceholderPage(title: 'Folders'),
+    FoldersPage(),
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final hasPermission = await IndexerController.inst.checkPermission();
-      if (hasPermission) {
-        IndexerController.inst.scanDevice();
-      }
-      PlayerController.inst.initMediaSessionCommands();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -125,44 +111,6 @@ class _MainPageState extends State<MainPage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _PlaceholderPage extends StatelessWidget {
-  final String title;
-
-  const _PlaceholderPage({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Broken.musicnote,
-            size: 48.0,
-            color: theme.colorScheme.onSurfaceVariant.withOpacityExt(0.3),
-          ),
-          const SizedBox(height: 16.0),
-          Text(
-            title,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant.withOpacityExt(0.5),
-            ),
-          ),
-          const SizedBox(height: 8.0),
-          Text(
-            'Coming soon',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant.withOpacityExt(0.4),
-            ),
-          ),
-        ],
       ),
     );
   }

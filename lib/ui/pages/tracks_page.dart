@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -23,15 +24,53 @@ class _TracksPageState extends State<TracksPage> {
   String _searchQuery = '';
   bool _showSearch = false;
   final _searchController = TextEditingController();
+  Timer? _debounce;
+  List<ArcTrack>? _cachedFilteredTracks;
+  String _lastFilterQuery = '';
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
+  void _onSearchChanged(String q) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      setState(() {
+        _searchQuery = q;
+        _cachedFilteredTracks = null;
+      });
+    });
+  }
+
+  List<ArcTrack> _filteredTracks(IndexerController indexer) {
+    if (_searchQuery == _lastFilterQuery && _cachedFilteredTracks != null) {
+      return _cachedFilteredTracks!;
+    }
+    final sw = Stopwatch()..start();
+    _lastFilterQuery = _searchQuery;
+    _cachedFilteredTracks = indexer.trackList.where((t) {
+      if (_searchQuery.isEmpty) return true;
+      final q = _searchQuery.toLowerCase();
+      return t.title.toLowerCase().contains(q) ||
+          t.artist.toLowerCase().contains(q) ||
+          t.album.toLowerCase().contains(q);
+    }).toList();
+    sw.stop();
+    if (sw.elapsedMilliseconds > 5) {
+      debugPrint(
+        '[ARC] _filteredTracks: ${sw.elapsedMilliseconds}ms '
+        '(${_cachedFilteredTracks!.length} results)',
+      );
+    }
+    return _cachedFilteredTracks!;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final sw = Stopwatch()..start();
     final indexer = context.watch<IndexerController>();
     final theme = Theme.of(context);
 
@@ -115,13 +154,14 @@ class _TracksPageState extends State<TracksPage> {
       );
     }
 
-    final tracks = indexer.trackList.where((t) {
-      if (_searchQuery.isEmpty) return true;
-      final q = _searchQuery.toLowerCase();
-      return t.title.toLowerCase().contains(q) ||
-          t.artist.toLowerCase().contains(q) ||
-          t.album.toLowerCase().contains(q);
-    }).toList();
+    final tracks = _filteredTracks(indexer);
+    sw.stop();
+    if (sw.elapsedMilliseconds > 16) {
+      debugPrint(
+        '[ARC] TracksPage build: ${sw.elapsedMilliseconds}ms '
+        '(tracks=${tracks.length}, query="$_searchQuery")',
+      );
+    }
 
     return Column(
       children: [
@@ -131,12 +171,13 @@ class _TracksPageState extends State<TracksPage> {
           tracks: tracks,
           showSearch: _showSearch,
           searchController: _searchController,
-          onSearchChanged: (q) => setState(() => _searchQuery = q),
+          onSearchChanged: _onSearchChanged,
           onToggleSearch: () {
             setState(() {
               _showSearch = !_showSearch;
               if (!_showSearch) {
                 _searchQuery = '';
+                _cachedFilteredTracks = null;
                 _searchController.clear();
               }
             });
@@ -428,41 +469,68 @@ class _ArtworkWidget extends StatefulWidget {
 }
 
 class _ArtworkWidgetState extends State<_ArtworkWidget> {
-  late Future<Uint8List?> _artworkFuture;
+  Uint8List? _cachedBytes;
+  bool _disposed = false;
 
   @override
   void initState() {
     super.initState();
-    _artworkFuture = ArtworkService.inst.getArtwork(
+    _loadArtwork();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ArtworkWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.trackId != widget.trackId) {
+      _cachedBytes = null;
+      _loadArtwork();
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  Future<void> _loadArtwork() async {
+    final sw = Stopwatch()..start();
+    final bytes = await ArtworkService.inst.getArtwork(
       widget.trackId,
       MediaType.audio,
     );
+    sw.stop();
+    if (sw.elapsedMilliseconds > 50) {
+      debugPrint(
+        '[ARC] artwork slow load: ${sw.elapsedMilliseconds}ms for id=${widget.trackId}',
+      );
+    }
+    if (!_disposed && mounted) {
+      setState(() {
+        _cachedBytes = bytes;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return FutureBuilder<Uint8List?>(
-      future: _artworkFuture,
-      builder: (context, snapshot) {
-        if (snapshot.hasData && snapshot.data != null) {
-          return Image.memory(
-            snapshot.data!,
-            fit: BoxFit.cover,
-            gaplessPlayback: true,
-          );
-        }
+    if (_cachedBytes != null) {
+      return Image.memory(
+        _cachedBytes!,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+      );
+    }
 
-        return Container(
-          color: theme.colorScheme.surfaceContainerHighest,
-          child: Icon(
-            Broken.musicnote,
-            size: 22,
-            color: theme.colorScheme.onSurfaceVariant.withOpacityExt(0.5),
-          ),
-        );
-      },
+    return Container(
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Icon(
+        Broken.musicnote,
+        size: 22,
+        color: theme.colorScheme.onSurfaceVariant.withOpacityExt(0.5),
+      ),
     );
   }
 }

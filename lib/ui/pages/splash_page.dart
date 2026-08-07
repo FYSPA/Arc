@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../controller/indexer_controller.dart';
+import '../../controller/player_controller.dart';
 import '../../controller/settings_controller.dart';
 import 'main_page.dart';
 import 'onboarding_page.dart';
@@ -16,6 +18,8 @@ class _SplashPageState extends State<SplashPage>
     with SingleTickerProviderStateMixin {
   late final AnimationController _fadeController;
   late final Animation<double> _fadeAnimation;
+  bool _dataReady = false;
+  bool _navigating = false;
 
   @override
   void initState() {
@@ -32,14 +36,37 @@ class _SplashPageState extends State<SplashPage>
     );
 
     _fadeController.forward();
+    _preloadData();
 
     Future.delayed(const Duration(milliseconds: 5870), () {
-      if (!mounted) return;
+      if (!mounted || _navigating) return;
+      _finishSplash();
+    });
+  }
+
+  Future<void> _preloadData() async {
+    final indexer = IndexerController.inst;
+    final hasPermission = await indexer.checkPermission();
+    if (hasPermission) {
+      indexer.scanDevice();
+    }
+    PlayerController.inst.initMediaSessionCommands();
+    _dataReady = true;
+  }
+
+  void _finishSplash() {
+    if (_dataReady) {
+      _navigating = true;
       _fadeController.reverse().then((_) {
         if (!mounted) return;
         _navigateToNext();
       });
-    });
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _navigating) return;
+        _finishSplash();
+      });
+    }
   }
 
   void _navigateToNext() {

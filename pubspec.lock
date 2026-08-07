@@ -6,7 +6,7 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: "34f91ee25a6c5e08ebb4f10b3a925ea908f17a31"
+      resolved-ref: c6918fb11a04e98ab26211a392a96d14b99babab
       url: "https://github.com/FYSPA/Arc-Engine.git"
     source: git
     version: "0.1.0"
@@ -23,7 +23,7 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: "39cb884cc6ee901da14449365ea0772ba0434570"
+      resolved-ref: "66f3dc2b66326f92fa16f275b1b6193bdbc22d56"
       url: "https://github.com/FYSPA/Arx-Canvas.git"
     source: git
     version: "1.0.0"
