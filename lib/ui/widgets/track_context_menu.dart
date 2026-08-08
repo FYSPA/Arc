@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../core/broken_icons.dart';
 import '../../core/extensions.dart';
@@ -75,16 +74,6 @@ class _TrackContextMenuSheet extends StatelessWidget {
               _showTrackInfo(context, theme);
             },
           ),
-          _MenuItem(
-            icon: Broken.share,
-            title: 'Share',
-            onTap: () {
-              Navigator.pop(context);
-              SharePlus.instance.share(
-                ShareParams(text: '${track.title} - ${track.artist}'),
-              );
-            },
-          ),
           const SizedBox(height: 8),
         ],
       ),
@@ -155,10 +144,31 @@ class _TrackContextMenuSheet extends StatelessWidget {
             track.dateAdded! * 1000,
           ).toString().substring(0, 16)
         : 'Unknown';
+    final format = track.filePath != null
+        ? track.filePath!.split('.').last.toUpperCase()
+        : 'Unknown';
+    final player = PlayerController.inst;
+    final meta = player.currentTrack?.id == track.id ? player.metadata : null;
+    final bitrateText = meta != null && meta.bitrate > 0
+        ? '${meta.bitrate} kbps'
+        : null;
+    final sampleRateText = meta != null && meta.sampleRate > 0
+        ? '${meta.sampleRate} Hz'
+        : null;
+    final bitDepthText = meta != null && meta.bitDepth > 0
+        ? '${meta.bitDepth} bit'
+        : null;
+    final channelsText = meta != null && meta.channels > 0
+        ? '${meta.channels} ${meta.channels == 1 ? 'ch' : 'chs'}'
+        : null;
+    final isrcText = meta != null && meta.isrc.isNotEmpty ? meta.isrc : null;
+    final yearText = meta != null && meta.year != null && meta.year! > 0
+        ? '${meta.year}'
+        : null;
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: Text(
           'Track Info',
           style: theme.textTheme.bodySmall?.copyWith(
@@ -168,24 +178,39 @@ class _TrackContextMenuSheet extends StatelessWidget {
         ),
         titlePadding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 0.0),
         contentPadding: const EdgeInsets.all(20.0),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _InfoRow(label: 'Title', value: track.title),
-            _InfoRow(label: 'Artist', value: track.artist),
-            _InfoRow(label: 'Album', value: track.album),
-            if (track.genre != null)
-              _InfoRow(label: 'Genre', value: track.genre!),
-            _InfoRow(label: 'Duration', value: track.durationText),
-            _InfoRow(label: 'Size', value: sizeText),
-            _InfoRow(label: 'Added', value: dateText),
-            if (track.filePath != null)
-              _InfoRow(label: 'Path', value: track.filePath!, maxLines: 2),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _InfoRow(label: 'Title', value: track.title),
+              _InfoRow(label: 'Artist', value: track.artist),
+              _InfoRow(label: 'Album', value: track.album),
+              _InfoRow(label: 'Format', value: format),
+              if (track.genre != null)
+                _InfoRow(label: 'Genre', value: track.genre!),
+              _InfoRow(label: 'Duration', value: track.durationText),
+              _InfoRow(label: 'Size', value: sizeText),
+              if (bitrateText != null)
+                _InfoRow(label: 'Bitrate', value: bitrateText),
+              if (sampleRateText != null)
+                _InfoRow(label: 'Sample Rate', value: sampleRateText),
+              if (bitDepthText != null)
+                _InfoRow(label: 'Bit Depth', value: bitDepthText),
+              if (channelsText != null)
+                _InfoRow(label: 'Channels', value: channelsText),
+              if (yearText != null) _InfoRow(label: 'Year', value: yearText),
+              if (track.track != null)
+                _InfoRow(label: 'Track #', value: '${track.track}'),
+              if (isrcText != null) _InfoRow(label: 'ISRC', value: isrcText),
+              _InfoRow(label: 'Added', value: dateText),
+              if (track.filePath != null)
+                _InfoRow(label: 'Path', value: track.filePath!, maxLines: 2),
+            ],
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogCtx),
             child: const Text('Close'),
           ),
         ],
