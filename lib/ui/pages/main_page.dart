@@ -13,6 +13,7 @@ import 'albums_page.dart';
 import 'artists_page.dart';
 import 'folders_page.dart';
 import 'home_page.dart';
+import 'search_page.dart';
 import 'tracks_page.dart';
 
 class MainPage extends StatefulWidget {
@@ -64,7 +65,16 @@ class _MainPageState extends State<MainPage> {
           centerTitle: false,
           actions: [
             IconButton(
-              icon: const Icon(Broken.settings),
+              icon: const Icon(Broken.search_normal, size: 22),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SearchPage()),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Broken.settings, size: 22),
               onPressed: () {
                 Navigator.push(
                   context,
