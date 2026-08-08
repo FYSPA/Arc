@@ -465,49 +465,116 @@ class _PlayerPageState extends State<PlayerPage> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: queue.length,
-      itemBuilder: (context, index) {
-        final track = queue[index];
-        final isCurrent = index == player.queueIndex;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Row(
+            children: [
+              Text(
+                'Queue',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '(${queue.length})',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: Icon(
+                  Broken.trash,
+                  size: 20,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                onPressed: () => player.clearQueue(),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ReorderableListView.builder(
+            padding: const EdgeInsets.only(bottom: 16),
+            itemCount: queue.length,
+            onReorderItem: (oldIndex, newIndex) {
+              player.reorderQueue(oldIndex, newIndex);
+            },
+            itemBuilder: (context, index) {
+              final track = queue[index];
+              final isCurrent = index == player.queueIndex;
 
-        return ListTile(
-          leading: isCurrent
-              ? SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Icon(Broken.play, color: accent),
-                )
-              : null,
-          title: Text(
-            track.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: isCurrent ? accent : null,
-              fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
-            ),
+              return Dismissible(
+                key: ValueKey('${track.filePath}_$index'),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 24),
+                  color: Colors.red.withOpacityExt(0.8),
+                  child: const Icon(
+                    Broken.trash,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                onDismissed: (_) => player.removeFromQueue(index),
+                child: ListTile(
+                  leading: isCurrent
+                      ? SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: Icon(Broken.play, color: accent),
+                        )
+                      : null,
+                  title: Text(
+                    track.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: isCurrent ? accent : null,
+                      fontWeight: isCurrent
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+                  subtitle: Text(
+                    track.artist,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: isCurrent
+                          ? accent.withOpacityExt(0.7)
+                          : theme.colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Broken.close_circle, size: 20),
+                        onPressed: () => player.removeFromQueue(index),
+                        color: theme.colorScheme.onSurfaceVariant
+                            .withOpacityExt(0.5),
+                      ),
+                      Icon(
+                        Broken.menu,
+                        size: 20,
+                        color: theme.colorScheme.onSurfaceVariant
+                            .withOpacityExt(0.3),
+                      ),
+                    ],
+                  ),
+                  onTap: () => player.playTrack(track, index: index),
+                ),
+              );
+            },
           ),
-          subtitle: Text(
-            track.artist,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: isCurrent
-                  ? accent.withOpacityExt(0.7)
-                  : theme.colorScheme.onSurfaceVariant,
-              fontSize: 13,
-            ),
-          ),
-          trailing: IconButton(
-            icon: const Icon(Broken.close_circle, size: 20),
-            onPressed: () => player.removeFromQueue(index),
-            color: theme.colorScheme.onSurfaceVariant.withOpacityExt(0.5),
-          ),
-          onTap: () => player.playTrack(track, index: index),
-        );
-      },
+        ),
+      ],
     );
   }
 

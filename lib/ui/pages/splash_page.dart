@@ -51,6 +51,7 @@ class _SplashPageState extends State<SplashPage>
       indexer.scanDevice();
     }
     PlayerController.inst.initMediaSessionCommands();
+    await PlayerController.inst.restorePlaybackState();
     _dataReady = true;
   }
 

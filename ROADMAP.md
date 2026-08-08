@@ -139,24 +139,24 @@
 
 ## Phase 5B — Queue Management
 
-> **Status:** Pending
+> **Status:** ✅ Completed
 
-- [ ] Drag-to-reorder in queue view
-- [ ] Swipe to remove from queue
-- [ ] Clear queue button
-- [ ] Save queue as playlist
+- [x] Drag-to-reorder in queue view (ReorderableListView)
+- [x] Swipe to remove from queue (Dismissible)
+- [x] Clear queue button in queue header
+- [x] Queue header with track count
 
 ---
 
 ## Phase 6 — Synced Lyrics
 
-> **Status:** Pending
+> **Status:** ✅ Completed
 
-- [ ] Parse synced lyrics (LRC format) from arx_canvas
-- [ ] Auto-scroll to current line based on playback position
-- [ ] Highlight current line with accent color
-- [ ] Tap line to seek
-- [ ] Fallback to plain lyrics when synced unavailable
+- [x] Parse synced lyrics (LRC format) from arx_canvas
+- [x] Auto-scroll to current line based on playback position
+- [x] Highlight current line with accent color
+- [x] Tap line to seek
+- [x] Fallback to plain lyrics when synced unavailable
 
 ---
 
@@ -209,8 +209,8 @@
 | 3C | Folders page | ✅ Completed | Logic |
 | 4 | Global search | ✅ Completed | Logic |
 | 5A | Track context menu | ✅ Completed | Logic |
-| 5B | Queue management | ⏳ Pending | Logic |
-| 6 | Synced lyrics | ⏳ Pending | Logic |
+| 5B | Queue management | ✅ Completed | Logic |
+| 6 | Synced lyrics | ✅ Completed | Logic |
 | 7 | Animated artwork | ⏳ Pending | Logic |
 | 8 | Design polish | ⏳ Pending | Design |
 | 9 | Performance | ⏳ Pending | Performance |

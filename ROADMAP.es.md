@@ -139,24 +139,24 @@
 
 ## Fase 5B — Gestión de Cola
 
-> **Estado:** Pendiente
+> **Estado:** ✅ Completada
 
-- [ ] Drag-to-reorder en la vista de cola
-- [ ] Swipe para quitar de la cola
-- [ ] Botón limpiar cola
-- [ ] Guardar cola como playlist
+- [x] Drag-to-reorder en la vista de cola (ReorderableListView)
+- [x] Swipe para quitar de la cola (Dismissible)
+- [x] Botón limpiar cola en el header
+- [x] Header de cola con conteo de tracks
 
 ---
 
 ## Fase 6 — Letras Sincronizadas
 
-> **Estado:** Pendiente
+> **Estado:** ✅ Completada
 
-- [ ] Parsear letras sincronizadas (formato LRC) de arx_canvas
-- [ ] Auto-scroll a la línea actual según la posición de reproducción
-- [ ] Highlight de la línea actual con color de acento
-- [ ] Tap en línea para buscar (seek)
-- [ ] Fallback a letras plain cuando no hay sincronización disponible
+- [x] Parsear letras sincronizadas (formato LRC) de arx_canvas
+- [x] Auto-scroll a la línea actual según la posición de reproducción
+- [x] Highlight de la línea actual con color de acento
+- [x] Tap en línea para buscar (seek)
+- [x] Fallback a letras plain cuando no hay sincronización disponible
 
 ---
 
@@ -209,8 +209,8 @@
 | 3C | Página de carpetas | ✅ Completada | Lógica |
 | 4 | Búsqueda global | ✅ Completada | Lógica |
 | 5A | Menú contextual | ✅ Completada | Lógica |
-| 5B | Gestión de cola | ⏳ Pendiente | Lógica |
-| 6 | Letras sincronizadas | ⏳ Pendiente | Lógica |
+| 5B | Gestión de cola | ✅ Completada | Lógica |
+| 6 | Letras sincronizadas | ✅ Completada | Lógica |
 | 7 | Artwork animado | ⏳ Pendiente | Lógica |
 | 8 | Pulido de diseño | ⏳ Pendiente | Diseño |
 | 9 | Performance | ⏳ Pendiente | Performance |
