@@ -8,6 +8,7 @@ import '../../core/dimensions.dart';
 import '../../core/extensions.dart';
 import '../../data/models/track.dart';
 import '../../services/media_store_service.dart';
+import '../widgets/track_context_menu.dart';
 
 class FoldersPage extends StatefulWidget {
   const FoldersPage({super.key});
@@ -247,6 +248,12 @@ class _FolderTrackTile extends StatelessWidget {
       onTap: () {
         PlayerController.inst.playTrack(track, queue: tracks, index: index);
       },
+      onLongPress: () => TrackContextMenu.show(
+        context,
+        track: track,
+        queue: tracks,
+        index: index,
+      ),
     );
   }
 }

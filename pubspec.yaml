@@ -23,6 +23,7 @@ dependencies:
       url: https://github.com/FYSPA/Arx-Canvas.git
       ref: main
   palette_generator: ^0.3.3+4
+  share_plus: ^13.3.0
 
 dev_dependencies:
   flutter_test:

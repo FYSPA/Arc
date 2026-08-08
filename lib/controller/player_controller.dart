@@ -345,6 +345,16 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void playNext(ArcTrack track) {
+    if (_queue.isEmpty) {
+      addToQueue(track);
+      return;
+    }
+    final insertAt = (_queueIndex + 1).clamp(0, _queue.length);
+    _queue.insert(insertAt, track);
+    notifyListeners();
+  }
+
   void removeFromQueue(int index) {
     if (index < 0 || index >= _queue.length) return;
     _queue.removeAt(index);

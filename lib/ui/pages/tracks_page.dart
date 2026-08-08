@@ -12,6 +12,7 @@ import '../../core/extensions.dart';
 import '../../data/models/track.dart';
 import '../../services/artwork_service.dart';
 import '../../services/media_store_service.dart';
+import '../widgets/track_context_menu.dart';
 
 class TracksPage extends StatefulWidget {
   const TracksPage({super.key});
@@ -455,6 +456,12 @@ class _TrackTile extends StatelessWidget {
       onTap: () {
         PlayerController.inst.playTrack(track, queue: allTracks, index: index);
       },
+      onLongPress: () => TrackContextMenu.show(
+        context,
+        track: track,
+        queue: allTracks,
+        index: index,
+      ),
     );
   }
 }

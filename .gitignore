@@ -49,3 +49,4 @@ app.*.map.json
 /docs
 .env
 logs.md
+BUGS_ENGINE.md

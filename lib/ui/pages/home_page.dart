@@ -8,6 +8,7 @@ import '../../core/broken_icons.dart';
 import '../../core/extensions.dart';
 import '../../data/models/track.dart';
 import '../../services/artwork_service.dart';
+import '../widgets/track_context_menu.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -174,6 +175,12 @@ class _HomeTrackTile extends StatelessWidget {
             index: index >= 0 ? index : 0,
           );
         },
+        onLongPress: () => TrackContextMenu.show(
+          context,
+          track: track,
+          queue: allTracks,
+          index: index >= 0 ? index : 0,
+        ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(8),

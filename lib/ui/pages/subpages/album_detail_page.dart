@@ -11,6 +11,7 @@ import '../../../data/models/album.dart';
 import '../../../data/models/track.dart';
 import '../../../services/artwork_service.dart';
 import '../../../services/media_store_service.dart';
+import '../../widgets/track_context_menu.dart';
 
 class AlbumDetailPage extends StatelessWidget {
   final ArcAlbum album;
@@ -155,6 +156,12 @@ class _AlbumTrackTile extends StatelessWidget {
       onTap: () {
         PlayerController.inst.playTrack(track, queue: tracks, index: index);
       },
+      onLongPress: () => TrackContextMenu.show(
+        context,
+        track: track,
+        queue: tracks,
+        index: index,
+      ),
     );
   }
 }

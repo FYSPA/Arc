@@ -1,6 +1,6 @@
 # Arc — Development Roadmap
 
-> Last updated: 2026-08-05
+> Last updated: 2026-08-08
 > Stack: Flutter + Provider + arc_engine + arx_canvas
 > Strategy: **Logic first → Design → Performance**
 
@@ -74,66 +74,66 @@
 - [x] Navigation flow: Splash → Onboarding → MainPage
 - [x] SharedPreferences persistence — All settings survive app restart
 - [x] Onboarding shown only once — `_isOnboarded` persisted to disk
-- [x] arc_engine — Native C++ audio playback (FFI) updated to c6918fb
+- [x] arc_engine — Native C++ audio playback (FFI) updated to 34c9f6c
 - [x] arx_canvas — Lyrics fetching (LRCLIB, Genius, Musixmatch, etc.)
 
 ---
 
 ## Phase 3A — Album Detail Page
 
-> **Status:** Pending
+> **Status:** ✅ Completed
 
-- [ ] `album_detail_page.dart` — Full page (not bottom sheet)
-- [ ] Album artwork header + track list
-- [ ] Play all / shuffle buttons
-- [ ] Tap track → play with album queue
-- [ ] Navigation from `albums_page.dart` tap
+- [x] `album_detail_page.dart` — Full page (not bottom sheet)
+- [x] Album artwork header + track list
+- [x] Play all / shuffle buttons
+- [x] Tap track → play with album queue
+- [x] Navigation from `albums_page.dart` tap
 
 ---
 
 ## Phase 3B — Artist Detail Page
 
-> **Status:** Pending
+> **Status:** ✅ Completed
 
-- [ ] `artist_detail_page.dart` — Full page (not bottom sheet)
-- [ ] Artist artwork + track list grouped by album
-- [ ] Play all / shuffle buttons
-- [ ] Tap track → play with artist queue
-- [ ] Navigation from `artists_page.dart` tap
+- [x] `artist_detail_page.dart` — Full page (not bottom sheet)
+- [x] Artist artwork + track list grouped by album
+- [x] Play all / shuffle buttons
+- [x] Tap track → play with artist queue
+- [x] Navigation from `artists_page.dart` tap
 
 ---
 
 ## Phase 3C — Folders Page
 
-> **Status:** Pending
+> **Status:** ✅ Completed
 
-- [ ] `folders_page.dart` — Real implementation (replace placeholder)
-- [ ] List folders with song count
-- [ ] Tap folder → folder tracks
-- [ ] Tap track → play with folder queue
-- [ ] Uses `queryFolders()` from MediaStoreService
+- [x] `folders_page.dart` — Real implementation (replace placeholder)
+- [x] List folders with song count
+- [x] Tap folder → folder tracks
+- [x] Tap track → play with folder queue
+- [x] Uses `queryFolders()` from MediaStoreService
 
 ---
 
 ## Phase 4 — Global Search
 
-> **Status:** Pending
+> **Status:** ✅ Completed
 
-- [ ] `search_page.dart` — Dedicated search tab or overlay
-- [ ] Search across tracks, albums, artists simultaneously
-- [ ] Results grouped by category with section headers
-- [ ] Debounced input (300ms)
-- [ ] Tap result → navigate to detail or play
+- [x] `search_page.dart` — Dedicated search tab or overlay
+- [x] Search across tracks, albums, artists simultaneously
+- [x] Results grouped by category with section headers
+- [x] Debounced input (300ms)
+- [x] Tap result → navigate to detail or play
 
 ---
 
 ## Phase 5A — Track Context Menu
 
-> **Status:** Pending
+> **Status:** ✅ Completed
 
-- [ ] `track_context_menu.dart` — Bottom sheet menu on long-press
-- [ ] Options: Add to queue, Play next, Add to playlist, Share, Track info
-- [ ] Works from any track list (home, tracks, album detail, artist detail)
+- [x] `track_context_menu.dart` — Bottom sheet menu on long-press
+- [x] Options: Add to queue, Play next, Track info, Share
+- [x] Works from any track list (home, tracks, album detail, artist detail, folders, search)
 
 ---
 
@@ -204,11 +204,11 @@
 | Core | Foundation | ✅ Completed | — |
 | 1. Player | Playback UI | ✅ Completed | — |
 | 2. Indexer | Track scanning + listing | ✅ Completed | — |
-| 3A | Album detail page | ⏳ Pending | Logic |
-| 3B | Artist detail page | ⏳ Pending | Logic |
-| 3C | Folders page | ⏳ Pending | Logic |
-| 4 | Global search | ⏳ Pending | Logic |
-| 5A | Track context menu | ⏳ Pending | Logic |
+| 3A | Album detail page | ✅ Completed | Logic |
+| 3B | Artist detail page | ✅ Completed | Logic |
+| 3C | Folders page | ✅ Completed | Logic |
+| 4 | Global search | ✅ Completed | Logic |
+| 5A | Track context menu | ✅ Completed | Logic |
 | 5B | Queue management | ⏳ Pending | Logic |
 | 6 | Synced lyrics | ⏳ Pending | Logic |
 | 7 | Animated artwork | ⏳ Pending | Logic |

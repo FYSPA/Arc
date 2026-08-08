@@ -14,6 +14,7 @@ import '../../data/models/artist.dart';
 import '../../data/models/track.dart';
 import '../../services/artwork_service.dart';
 import '../../services/media_store_service.dart';
+import '../widgets/track_context_menu.dart';
 import 'subpages/album_detail_page.dart';
 import 'subpages/artist_detail_page.dart';
 
@@ -339,6 +340,12 @@ class _SearchTrackTile extends StatelessWidget {
       onTap: () {
         PlayerController.inst.playTrack(track, queue: queue, index: index);
       },
+      onLongPress: () => TrackContextMenu.show(
+        context,
+        track: track,
+        queue: queue,
+        index: index,
+      ),
     );
   }
 }

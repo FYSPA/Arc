@@ -1,6 +1,6 @@
 # Arc — Roadmap de Desarrollo
 
-> Última actualización: 2026-08-05
+> Última actualización: 2026-08-08
 > Stack: Flutter + Provider + arc_engine + arx_canvas
 > Estrategia: **Lógica primero → Diseño → Performance**
 
@@ -74,66 +74,66 @@
 - [x] Flujo de navegación: Splash → Onboarding → MainPage
 - [x] Persistencia con SharedPreferences — Todos los settings sobreviven el reinicio
 - [x] Onboarding solo se muestra una vez — `_isOnboarded` persistido a disco
-- [x] arc_engine — Reproducción de audio nativa en C++ (FFI) actualizado a c6918fb
+- [x] arc_engine — Reproducción de audio nativa en C++ (FFI) actualizado a 34c9f6c
 - [x] arx_canvas — Obtención de letras (LRCLIB, Genius, Musixmatch, etc.)
 
 ---
 
 ## Fase 3A — Página de Detalle de Álbum
 
-> **Estado:** Pendiente
+> **Estado:** ✅ Completada
 
-- [ ] `album_detail_page.dart` — Página completa (no bottom sheet)
-- [ ] Header con artwork del álbum + lista de tracks
-- [ ] Botones Play all / Shuffle
-- [ ] Tap track → reproducir con cola del álbum
-- [ ] Navegación desde `albums_page.dart` al tocar
+- [x] `album_detail_page.dart` — Página completa (no bottom sheet)
+- [x] Header con artwork del álbum + lista de tracks
+- [x] Botones Play all / Shuffle
+- [x] Tap track → reproducir con cola del álbum
+- [x] Navegación desde `albums_page.dart` al tocar
 
 ---
 
 ## Fase 3B — Página de Detalle de Artista
 
-> **Estado:** Pendiente
+> **Estado:** ✅ Completada
 
-- [ ] `artist_detail_page.dart` — Página completa (no bottom sheet)
-- [ ] Artwork del artista + lista de tracks agrupados por álbum
-- [ ] Botones Play all / Shuffle
-- [ ] Tap track → reproducir con cola del artista
-- [ ] Navegación desde `artists_page.dart` al tocar
+- [x] `artist_detail_page.dart` — Página completa (no bottom sheet)
+- [x] Artwork del artista + lista de tracks agrupados por álbum
+- [x] Botones Play all / Shuffle
+- [x] Tap track → reproducir con cola del artista
+- [x] Navegación desde `artists_page.dart` al tocar
 
 ---
 
 ## Fase 3C — Página de Carpetas
 
-> **Estado:** Pendiente
+> **Estado:** ✅ Completada
 
-- [ ] `folders_page.dart` — Implementación real (reemplazar placeholder)
-- [ ] Lista de carpetas con conteo de canciones
-- [ ] Tap carpeta → tracks de la carpeta
-- [ ] Tap track → reproducir con cola de la carpeta
-- [ ] Usa `queryFolders()` de MediaStoreService
+- [x] `folders_page.dart` — Implementación real (reemplazar placeholder)
+- [x] Lista de carpetas con conteo de canciones
+- [x] Tap carpeta → tracks de la carpeta
+- [x] Tap track → reproducir con cola de la carpeta
+- [x] Usa `queryFolders()` de MediaStoreService
 
 ---
 
 ## Fase 4 — Búsqueda Global
 
-> **Estado:** Pendiente
+> **Estado:** ✅ Completada
 
-- [ ] `search_page.dart` — Tab o overlay de búsqueda dedicado
-- [ ] Buscar en tracks, álbumes y artistas simultáneamente
-- [ ] Resultados agrupados por categoría con headers
-- [ ] Input con debounce (300ms)
-- [ ] Tap resultado → navegar al detalle o reproducir
+- [x] `search_page.dart` — Tab o overlay de búsqueda dedicado
+- [x] Buscar en tracks, álbumes y artistas simultáneamente
+- [x] Resultados agrupados por categoría con headers
+- [x] Input con debounce (300ms)
+- [x] Tap resultado → navegar al detalle o reproducir
 
 ---
 
 ## Fase 5A — Menú Contextual de Track
 
-> **Estado:** Pendiente
+> **Estado:** ✅ Completada
 
-- [ ] `track_context_menu.dart` — Bottom sheet al hacer long-press
-- [ ] Opciones: Agregar a cola, Reproducir siguiente, Agregar a playlist, Compartir, Info del track
-- [ ] Funciona desde cualquier lista de tracks (home, tracks, detalle álbum, detalle artista)
+- [x] `track_context_menu.dart` — Bottom sheet al hacer long-press
+- [x] Opciones: Agregar a cola, Reproducir siguiente, Info del track, Compartir
+- [x] Funciona desde cualquier lista de tracks (home, tracks, detalle álbum, detalle artista, carpetas, búsqueda)
 
 ---
 
@@ -204,11 +204,11 @@
 | Core | Fundamentos | ✅ Completada | — |
 | 1. Player | UI de reproducción | ✅ Completada | — |
 | 2. Indexador | Escaneo y listado | ✅ Completada | — |
-| 3A | Detalle de álbum | ⏳ Pendiente | Lógica |
-| 3B | Detalle de artista | ⏳ Pendiente | Lógica |
-| 3C | Página de carpetas | ⏳ Pendiente | Lógica |
-| 4 | Búsqueda global | ⏳ Pendiente | Lógica |
-| 5A | Menú contextual | ⏳ Pendiente | Lógica |
+| 3A | Detalle de álbum | ✅ Completada | Lógica |
+| 3B | Detalle de artista | ✅ Completada | Lógica |
+| 3C | Página de carpetas | ✅ Completada | Lógica |
+| 4 | Búsqueda global | ✅ Completada | Lógica |
+| 5A | Menú contextual | ✅ Completada | Lógica |
 | 5B | Gestión de cola | ⏳ Pendiente | Lógica |
 | 6 | Letras sincronizadas | ⏳ Pendiente | Lógica |
 | 7 | Artwork animado | ⏳ Pendiente | Lógica |
