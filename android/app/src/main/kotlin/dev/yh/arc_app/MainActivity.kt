@@ -5,6 +5,9 @@ import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -18,6 +21,7 @@ import java.io.ByteArrayOutputStream
 class MainActivity : FlutterActivity() {
     private val PERMISSION_CHANNEL = "arc_app/permissions"
     private val MEDIA_CHANNEL = "arc_app/media"
+    private val AUDIO_FOCUS_CHANNEL = "arc_app/audio_focus"
     private val REQUEST_CODE = 1001
     private var permissionResult: MethodChannel.Result? = null
 
@@ -49,12 +53,23 @@ class MainActivity : FlutterActivity() {
                     "queryArtists" -> result.success(queryArtists())
                     "queryFolders" -> result.success(queryFolders())
                     "queryArtwork" -> {
-                        val id = call.argument<Int>("id")!!
+                        val id = call.argument<Number>("id")!!.toLong()
                         val type = call.argument<Int>("type")!!
                         Thread {
                             val artwork = queryArtwork(id, type)
                             runOnUiThread { result.success(artwork) }
                         }.start()
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AUDIO_FOCUS_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "requestFocus" -> {
+                        requestAudioFocus()
+                        result.success(null)
                     }
                     else -> result.notImplemented()
                 }
@@ -227,14 +242,25 @@ class MainActivity : FlutterActivity() {
         }.sortedBy { it["name"] as String }
     }
 
-    private fun queryArtwork(id: Int, type: Int): ByteArray? {
-        val contentUri = when (type) {
+    private fun queryArtwork(id: Long, type: Int): ByteArray? {
+        var resolvedId = id
+        var resolvedType = type
+
+        if (type == 0) {
+            val albumId = getAlbumIdForTrack(id)
+            if (albumId > 0) {
+                resolvedType = 1
+                resolvedId = albumId
+            }
+        }
+
+        val contentUri = when (resolvedType) {
             0 -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
             1 -> MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI
             2 -> MediaStore.Audio.Artists.EXTERNAL_CONTENT_URI
             else -> return null
         }
-        val uri = ContentUris.withAppendedId(contentUri, id.toLong())
+        val uri = ContentUris.withAppendedId(contentUri, resolvedId)
         return try {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
@@ -255,6 +281,17 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun getAlbumIdForTrack(trackId: Long): Long {
+        val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackId)
+        val projection = arrayOf(MediaStore.Audio.Media.ALBUM_ID)
+        contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                return cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID))
+            }
+        }
+        return -1
+    }
+
     private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
         val height = options.outHeight
         val width = options.outWidth
@@ -267,5 +304,27 @@ class MainActivity : FlutterActivity() {
             }
         }
         return inSampleSize
+    }
+
+    private fun requestAudioFocus() {
+        val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                .build()
+            audioManager.requestAudioFocus(focusRequest)
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.requestAudioFocus(
+                null,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN
+            )
+        }
     }
 }

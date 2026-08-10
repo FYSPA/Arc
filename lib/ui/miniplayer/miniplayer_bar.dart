@@ -8,8 +8,16 @@ import '../../core/extensions.dart';
 import '../../services/artwork_service.dart';
 import 'player_page.dart';
 
-class MiniplayerBar extends StatelessWidget {
+class MiniplayerBar extends StatefulWidget {
   const MiniplayerBar({super.key});
+
+  @override
+  State<MiniplayerBar> createState() => _MiniplayerBarState();
+}
+
+class _MiniplayerBarState extends State<MiniplayerBar> {
+  ImageProvider? _cachedImage;
+  int? _cachedTrackId;
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +27,19 @@ class MiniplayerBar extends StatelessWidget {
     final accent = colorCtrl.accentColor;
     final borderRadius = BorderRadius.vertical(top: Radius.circular(20.0));
     final hasTrack = player.hasTrack;
+
+    final trackId = player.currentTrack?.id;
+    if (trackId != _cachedTrackId) {
+      _cachedTrackId = trackId;
+      _cachedImage = null;
+      if (player.currentTrack != null) {
+        ArtworkService.inst.getArtworkImage(player.currentTrack!).then((img) {
+          if (mounted && _cachedTrackId == trackId) {
+            setState(() => _cachedImage = img);
+          }
+        });
+      }
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 12.0),
@@ -168,15 +189,16 @@ class MiniplayerBar extends StatelessWidget {
       );
     }
 
+    final image = _cachedImage;
     return SizedBox(
       width: 58.0,
       height: 58.0,
-      child: FutureBuilder<ImageProvider?>(
-        future: ArtworkService.inst.getArtworkImage(track),
-        builder: (context, snapshot) {
-          final image = snapshot.data;
-          if (image == null) {
-            return Container(
+      child: image != null
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(8.0),
+              child: Image(image: image, fit: BoxFit.cover),
+            )
+          : Container(
               decoration: BoxDecoration(
                 color: theme.cardColor,
                 borderRadius: BorderRadius.circular(8.0),
@@ -186,14 +208,7 @@ class MiniplayerBar extends StatelessWidget {
                 size: 30.0,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
-            );
-          }
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(8.0),
-            child: Image(image: image, fit: BoxFit.cover),
-          );
-        },
-      ),
+            ),
     );
   }
 

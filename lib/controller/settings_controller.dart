@@ -69,6 +69,12 @@ class SettingsController extends ChangeNotifier {
   bool _enableAmoledGlow = true;
   bool get enableAmoledGlow => _enableAmoledGlow;
 
+  bool _enableAnimatedArtwork = true;
+  bool get enableAnimatedArtwork => _enableAnimatedArtwork;
+
+  double _artworkSize = 280.0;
+  double get artworkSize => _artworkSize;
+
   Set<GlowPosition> _amoledGlowPositions = {GlowPosition.topRight};
   Set<GlowPosition> get amoledGlowPositions =>
       Set.unmodifiable(_amoledGlowPositions);
@@ -149,6 +155,10 @@ class SettingsController extends ChangeNotifier {
 
     _enableAmoledGlow = _prefs.getBool('enable_amoled_glow') ?? true;
 
+    _enableAnimatedArtwork = _prefs.getBool('enable_animated_artwork') ?? true;
+
+    _artworkSize = _prefs.getDouble('artwork_size') ?? 280.0;
+
     final glowPosStrings = _prefs.getStringList('amoled_glow_positions');
     if (glowPosStrings != null) {
       _amoledGlowPositions = glowPosStrings
@@ -190,6 +200,8 @@ class SettingsController extends ChangeNotifier {
     _prefs.setDouble('border_radius_multiplier', _borderRadiusMultiplier);
     _prefs.setBool('use_amoled_black', _useAmoledBlack);
     _prefs.setBool('enable_amoled_glow', _enableAmoledGlow);
+    _prefs.setBool('enable_animated_artwork', _enableAnimatedArtwork);
+    _prefs.setDouble('artwork_size', _artworkSize);
     _prefs.setStringList(
       'amoled_glow_positions',
       _amoledGlowPositions.map((e) => e.name).toList(),
@@ -321,6 +333,18 @@ class SettingsController extends ChangeNotifier {
 
   void setEnableAmoledGlow(bool value) {
     _enableAmoledGlow = value;
+    notifyListeners();
+    _save();
+  }
+
+  void setEnableAnimatedArtwork(bool value) {
+    _enableAnimatedArtwork = value;
+    notifyListeners();
+    _save();
+  }
+
+  void setArtworkSize(double value) {
+    _artworkSize = value;
     notifyListeners();
     _save();
   }

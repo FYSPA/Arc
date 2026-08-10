@@ -195,6 +195,29 @@ class SettingsPage extends StatelessWidget {
                   subtitle: '${settings.artworkCacheSize}px',
                 ),
                 SettingsTile(
+                  icon: Broken.play_circle,
+                  title: 'Animated Artwork',
+                  subtitle: 'Auto-play animated covers in player',
+                  type: SettingsTileType.toggle,
+                  value: settings.enableAnimatedArtwork,
+                  onChanged: settings.setEnableAnimatedArtwork,
+                ),
+                SettingsTile(
+                  icon: Broken.command_square,
+                  title: 'Artwork Size',
+                  subtitle: '${settings.artworkSize.round()}px',
+                  trailing: SizedBox(
+                    width: 120.0,
+                    child: Slider(
+                      value: settings.artworkSize,
+                      min: 200.0,
+                      max: 340.0,
+                      divisions: 14,
+                      onChanged: settings.setArtworkSize,
+                    ),
+                  ),
+                ),
+                SettingsTile(
                   icon: Broken.command,
                   title: 'FAB Action',
                   subtitle: _fabTypeText(settings.fabType),

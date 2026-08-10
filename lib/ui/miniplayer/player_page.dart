@@ -4,9 +4,12 @@ import 'package:provider/provider.dart';
 
 import '../../controller/current_color_controller.dart';
 import '../../controller/player_controller.dart';
+import '../../controller/settings_controller.dart';
 import '../../core/broken_icons.dart';
 import '../../core/extensions.dart';
+import '../../data/models/track.dart';
 import '../../services/artwork_service.dart';
+import '../widgets/animated_artwork_widget.dart';
 import 'lyrics_view.dart';
 
 class PlayerPage extends StatefulWidget {
@@ -19,6 +22,9 @@ class PlayerPage extends StatefulWidget {
 class _PlayerPageState extends State<PlayerPage> {
   bool _showLyrics = false;
   bool _showQueue = false;
+  int? _lastTrackId;
+  ImageProvider? _staticArtworkImage;
+  int? _staticArtworkTrackId;
 
   @override
   void initState() {
@@ -46,6 +52,10 @@ class _PlayerPageState extends State<PlayerPage> {
     final player = context.watch<PlayerController>();
     final colorCtrl = context.watch<CurrentColorController>();
     final accent = colorCtrl.accentColor;
+
+    if (player.currentTrack?.id != _lastTrackId) {
+      _lastTrackId = player.currentTrack?.id;
+    }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -169,43 +179,68 @@ class _PlayerPageState extends State<PlayerPage> {
     ThemeData theme,
   ) {
     final track = player.currentTrack;
+    final settings = context.watch<SettingsController>();
+    final size = settings.artworkSize;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32.0),
-      child: FutureBuilder<ImageProvider?>(
-        future: track != null
-            ? ArtworkService.inst.getArtworkImage(track)
-            : null,
-        builder: (context, snapshot) {
-          final imageProvider = snapshot.data;
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            width: 280,
-            height: 280,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: accent.withOpacityExt(0.3),
-                  blurRadius: 40,
-                  offset: const Offset(0, 16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withOpacityExt(0.3),
+              blurRadius: 40,
+              offset: const Offset(0, 16),
+            ),
+          ],
+        ),
+        child: track != null && settings.enableAnimatedArtwork
+            ? AnimatedArtworkWidget(
+                key: ValueKey('artwork_${track.id}'),
+                track: track,
+                isPlaying: player.isPlaying,
+                size: size,
+                borderRadius: 24,
+              )
+            : _buildStaticArtwork(track, size, theme),
+      ),
+    );
+  }
+
+  Widget _buildStaticArtwork(ArcTrack? track, double size, ThemeData theme) {
+    final trackId = track?.id;
+    if (trackId != _staticArtworkTrackId) {
+      _staticArtworkTrackId = trackId;
+      _staticArtworkImage = null;
+      if (track != null) {
+        ArtworkService.inst.getArtworkImage(track).then((img) {
+          if (mounted && _staticArtworkTrackId == trackId) {
+            setState(() => _staticArtworkImage = img);
+          }
+        });
+      }
+    }
+
+    final imageProvider = _staticArtworkImage;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: imageProvider != null
+            ? Image(image: imageProvider, fit: BoxFit.cover)
+            : Container(
+                color: theme.cardColor,
+                child: Icon(
+                  Broken.musicnote,
+                  size: size * 0.29,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: imageProvider != null
-                  ? Image(image: imageProvider, fit: BoxFit.cover)
-                  : Container(
-                      color: theme.cardColor,
-                      child: Icon(
-                        Broken.musicnote,
-                        size: 80,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-            ),
-          );
-        },
+              ),
       ),
     );
   }

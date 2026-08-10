@@ -10,6 +10,7 @@ import '../../../core/extensions.dart';
 import '../../../data/models/artist.dart';
 import '../../../data/models/track.dart';
 import '../../../services/artwork_service.dart';
+import '../../../services/artist_photo_service.dart';
 import '../../../services/media_store_service.dart';
 import '../../widgets/track_context_menu.dart';
 
@@ -35,7 +36,10 @@ class ArtistDetailPage extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  _ArtistArtworkHeader(artistId: artist.id),
+                  _ArtistArtworkHeader(
+                    artistId: artist.id,
+                    artistName: artist.artist,
+                  ),
                   const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -168,8 +172,12 @@ class _ArtistTrackTile extends StatelessWidget {
 
 class _ArtistArtworkHeader extends StatefulWidget {
   final int artistId;
+  final String artistName;
 
-  const _ArtistArtworkHeader({required this.artistId});
+  const _ArtistArtworkHeader({
+    required this.artistId,
+    required this.artistName,
+  });
 
   @override
   State<_ArtistArtworkHeader> createState() => _ArtistArtworkHeaderState();
@@ -177,6 +185,7 @@ class _ArtistArtworkHeader extends StatefulWidget {
 
 class _ArtistArtworkHeaderState extends State<_ArtistArtworkHeader> {
   Uint8List? _bytes;
+  String? _networkUrl;
 
   @override
   void initState() {
@@ -189,7 +198,15 @@ class _ArtistArtworkHeaderState extends State<_ArtistArtworkHeader> {
       widget.artistId,
       MediaType.artist,
     );
-    if (mounted) setState(() => _bytes = data);
+    if (data != null && data.isNotEmpty) {
+      if (mounted) setState(() => _bytes = data);
+      return;
+    }
+
+    final url = await ArtistPhotoServiceWrapper.inst.getArtistPhotoUrl(
+      widget.artistName,
+    );
+    if (mounted && url != null) setState(() => _networkUrl = url);
   }
 
   @override
@@ -198,6 +215,18 @@ class _ArtistArtworkHeaderState extends State<_ArtistArtworkHeader> {
     if (_bytes != null) {
       return Image.memory(_bytes!, fit: BoxFit.cover, gaplessPlayback: true);
     }
+    if (_networkUrl != null) {
+      return Image.network(
+        _networkUrl!,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+        errorBuilder: (_, _, _) => _buildPlaceholder(theme),
+      );
+    }
+    return _buildPlaceholder(theme);
+  }
+
+  Widget _buildPlaceholder(ThemeData theme) {
     return Container(
       color: theme.colorScheme.surfaceContainerHighest,
       child: Icon(

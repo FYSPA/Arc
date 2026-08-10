@@ -24,6 +24,8 @@ dependencies:
       ref: main
   palette_generator: ^0.3.3+4
   share_plus: ^13.3.0
+  video_player: ^2.8.0
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:
