@@ -11,7 +11,6 @@ import '../../core/dimensions.dart';
 import '../../core/extensions.dart';
 import '../../data/models/track.dart';
 import '../../services/artwork_service.dart';
-import '../../services/media_store_service.dart';
 import '../widgets/track_context_menu.dart';
 
 class TracksPage extends StatefulWidget {
@@ -428,7 +427,7 @@ class _TrackTile extends StatelessWidget {
         child: SizedBox(
           width: 48,
           height: 48,
-          child: _ArtworkWidget(trackId: track.id),
+          child: _ArtworkWidget(track: track),
         ),
       ),
       title: Text(
@@ -467,9 +466,9 @@ class _TrackTile extends StatelessWidget {
 }
 
 class _ArtworkWidget extends StatefulWidget {
-  final int trackId;
+  final ArcTrack track;
 
-  const _ArtworkWidget({required this.trackId});
+  const _ArtworkWidget({required this.track});
 
   @override
   State<_ArtworkWidget> createState() => _ArtworkWidgetState();
@@ -488,7 +487,7 @@ class _ArtworkWidgetState extends State<_ArtworkWidget> {
   @override
   void didUpdateWidget(covariant _ArtworkWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.trackId != widget.trackId) {
+    if (oldWidget.track.id != widget.track.id) {
       _cachedBytes = null;
       _loadArtwork();
     }
@@ -502,14 +501,11 @@ class _ArtworkWidgetState extends State<_ArtworkWidget> {
 
   Future<void> _loadArtwork() async {
     final sw = Stopwatch()..start();
-    final bytes = await ArtworkService.inst.getArtwork(
-      widget.trackId,
-      MediaType.audio,
-    );
+    final bytes = await ArtworkService.inst.getTrackArtwork(widget.track);
     sw.stop();
     if (sw.elapsedMilliseconds > 50) {
       debugPrint(
-        '[ARC] artwork slow load: ${sw.elapsedMilliseconds}ms for id=${widget.trackId}',
+        '[ARC] artwork slow load: ${sw.elapsedMilliseconds}ms for id=${widget.track.id}',
       );
     }
     if (!_disposed && mounted) {

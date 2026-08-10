@@ -5,18 +5,48 @@ import 'package:provider/provider.dart';
 
 import '../../../controller/indexer_controller.dart';
 import '../../../controller/player_controller.dart';
+import '../../../controller/settings_controller.dart';
 import '../../../core/broken_icons.dart';
 import '../../../core/extensions.dart';
 import '../../../data/models/album.dart';
 import '../../../data/models/track.dart';
 import '../../../services/artwork_service.dart';
 import '../../../services/media_store_service.dart';
+import '../../widgets/animated_artwork_widget.dart';
 import '../../widgets/track_context_menu.dart';
 
 class AlbumDetailPage extends StatelessWidget {
   final ArcAlbum album;
 
   const AlbumDetailPage({super.key, required this.album});
+
+  static Widget _buildArtworkHeader(BuildContext context, ArcAlbum album) {
+    final settings = context.watch<SettingsController>();
+    final player = context.watch<PlayerController>();
+    final isPlaying =
+        player.currentTrack?.albumId == album.id ||
+        (player.currentTrack?.album == album.album &&
+            player.currentTrack?.artist == album.artist);
+    final pseudoTrack = ArcTrack(
+      id: album.id,
+      title: album.album,
+      artist: album.artist,
+      album: album.album,
+      albumId: album.id,
+    );
+
+    if (settings.enableAnimatedArtwork) {
+      return AnimatedArtworkWidget(
+        key: ValueKey('album_artwork_${album.id}'),
+        track: pseudoTrack,
+        isPlaying: isPlaying,
+        size: 280,
+        borderRadius: 0,
+      );
+    }
+
+    return _StaticAlbumHeader(album: album);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +65,7 @@ class AlbumDetailPage extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  _AlbumArtworkHeader(albumId: album.id),
+                  _buildArtworkHeader(context, album),
                   const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -166,16 +196,16 @@ class _AlbumTrackTile extends StatelessWidget {
   }
 }
 
-class _AlbumArtworkHeader extends StatefulWidget {
-  final int albumId;
+class _StaticAlbumHeader extends StatefulWidget {
+  final ArcAlbum album;
 
-  const _AlbumArtworkHeader({required this.albumId});
+  const _StaticAlbumHeader({required this.album});
 
   @override
-  State<_AlbumArtworkHeader> createState() => _AlbumArtworkHeaderState();
+  State<_StaticAlbumHeader> createState() => _StaticAlbumHeaderState();
 }
 
-class _AlbumArtworkHeaderState extends State<_AlbumArtworkHeader> {
+class _StaticAlbumHeaderState extends State<_StaticAlbumHeader> {
   Uint8List? _bytes;
 
   @override
@@ -185,11 +215,24 @@ class _AlbumArtworkHeaderState extends State<_AlbumArtworkHeader> {
   }
 
   Future<void> _load() async {
-    final data = await ArtworkService.inst.getArtwork(
-      widget.albumId,
+    final local = await ArtworkService.inst.getArtwork(
+      widget.album.id,
       MediaType.album,
     );
-    if (mounted) setState(() => _bytes = data);
+    if (local != null && local.isNotEmpty) {
+      if (mounted) setState(() => _bytes = local);
+      return;
+    }
+
+    final pseudoTrack = ArcTrack(
+      id: widget.album.id,
+      title: widget.album.album,
+      artist: widget.album.artist,
+      album: widget.album.album,
+      albumId: widget.album.id,
+    );
+    final online = await ArtworkService.inst.getTrackArtwork(pseudoTrack);
+    if (mounted) setState(() => _bytes = online);
   }
 
   @override

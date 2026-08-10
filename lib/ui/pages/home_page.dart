@@ -187,7 +187,11 @@ class _HomeTrackTile extends StatelessWidget {
           child: SizedBox(
             width: 44,
             height: 44,
-            child: _ArtworkWidget(id: track.id, type: MediaType.audio),
+            child: _ArtworkWidget(
+              id: track.id,
+              type: MediaType.audio,
+              track: track,
+            ),
           ),
         ),
         title: Text(
@@ -234,7 +238,11 @@ class _HomeArtistChip extends StatelessWidget {
             child: SizedBox(
               width: 64,
               height: 64,
-              child: _ArtworkWidget(id: artist.id, type: MediaType.artist),
+              child: _ArtworkWidget(
+                id: artist.id,
+                type: MediaType.artist,
+                artistName: artist.artist,
+              ),
             ),
           ),
           const SizedBox(height: 6),
@@ -298,8 +306,15 @@ class _HomeAlbumCard extends StatelessWidget {
 class _ArtworkWidget extends StatefulWidget {
   final int id;
   final MediaType type;
+  final ArcTrack? track;
+  final String? artistName;
 
-  const _ArtworkWidget({required this.id, required this.type});
+  const _ArtworkWidget({
+    required this.id,
+    required this.type,
+    this.track,
+    this.artistName,
+  });
 
   @override
   State<_ArtworkWidget> createState() => _ArtworkWidgetState();
@@ -311,7 +326,28 @@ class _ArtworkWidgetState extends State<_ArtworkWidget> {
   @override
   void initState() {
     super.initState();
-    _artworkFuture = ArtworkService.inst.getArtwork(widget.id, widget.type);
+    _artworkFuture = _loadArtwork();
+  }
+
+  Future<dynamic> _loadArtwork() async {
+    if (widget.track != null) {
+      return ArtworkService.inst.getTrackArtwork(widget.track!);
+    }
+
+    if (widget.type == MediaType.artist && widget.artistName != null) {
+      final local = await ArtworkService.inst.getArtwork(
+        widget.id,
+        widget.type,
+      );
+      if (local != null && local.isNotEmpty) return local;
+
+      return ArtworkService.inst.fetchArtistPhoto(
+        widget.artistName!,
+        widget.id,
+      );
+    }
+
+    return ArtworkService.inst.getArtwork(widget.id, widget.type);
   }
 
   @override

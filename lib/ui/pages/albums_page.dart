@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,6 +8,7 @@ import '../../core/broken_icons.dart';
 import '../../core/extensions.dart';
 import '../../core/dimensions.dart';
 import '../../data/models/album.dart';
+import '../../data/models/track.dart';
 import '../../services/artwork_service.dart';
 import '../../services/media_store_service.dart';
 import 'subpages/album_detail_page.dart';
@@ -88,7 +91,7 @@ class _AlbumCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               child: SizedBox(
                 width: double.infinity,
-                child: _AlbumArtwork(albumId: album.id),
+                child: _AlbumArtwork(album: album),
               ),
             ),
           ),
@@ -116,9 +119,9 @@ class _AlbumCard extends StatelessWidget {
 }
 
 class _AlbumArtwork extends StatefulWidget {
-  final int albumId;
+  final ArcAlbum album;
 
-  const _AlbumArtwork({required this.albumId});
+  const _AlbumArtwork({required this.album});
 
   @override
   State<_AlbumArtwork> createState() => _AlbumArtworkState();
@@ -130,10 +133,24 @@ class _AlbumArtworkState extends State<_AlbumArtwork> {
   @override
   void initState() {
     super.initState();
-    _artworkFuture = ArtworkService.inst.getArtwork(
-      widget.albumId,
+    _artworkFuture = _loadArtwork();
+  }
+
+  Future<Uint8List?> _loadArtwork() async {
+    final local = await ArtworkService.inst.getArtwork(
+      widget.album.id,
       MediaType.album,
     );
+    if (local != null && local.isNotEmpty) return local;
+
+    final pseudoTrack = ArcTrack(
+      id: widget.album.id,
+      title: widget.album.album,
+      artist: widget.album.artist,
+      album: widget.album.album,
+      albumId: widget.album.id,
+    );
+    return ArtworkService.inst.getTrackArtwork(pseudoTrack);
   }
 
   @override

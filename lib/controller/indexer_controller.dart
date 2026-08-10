@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../data/models/track.dart';
 import '../data/models/album.dart';
 import '../data/models/artist.dart';
+import '../services/artwork_service.dart';
 import '../services/media_store_service.dart';
 import '../services/permission_service.dart';
 import 'settings_controller.dart';
@@ -246,6 +247,20 @@ class IndexerController extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+    _precacheArtwork();
+  }
+
+  void _precacheArtwork() {
+    final albumIds = <int>{};
+    for (final track in _allTracks) {
+      if (track.albumId != null) {
+        albumIds.add(track.albumId!);
+      }
+    }
+    debugPrint('[ARC] precaching artwork for ${albumIds.length} albums...');
+    for (final id in albumIds) {
+      ArtworkService.inst.getArtwork(id, MediaType.album);
+    }
   }
 
   Future<void> _loadNextChunk() async {

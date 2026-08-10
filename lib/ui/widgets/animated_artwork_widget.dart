@@ -93,10 +93,19 @@ class _AnimatedArtworkWidgetState extends State<AnimatedArtworkWidget> {
     if (mounted) setState(() {});
 
     try {
-      // Run both fetches in parallel
-      final localFuture = local.ArtworkService.inst.getLocalArtwork(
-        widget.track,
+      // Check ImageProvider cache first (instant, from miniplayer)
+      final cached = local.ArtworkService.inst.getCachedImageProvider(
+        widget.track.id,
       );
+      if (cached != null) {
+        _staticImage = cached;
+        debugPrint('[AnimatedArtwork] static artwork from ImageProvider cache');
+      }
+
+      // Run both fetches in parallel (for cache miss or fallback)
+      final localFuture = cached == null
+          ? local.ArtworkService.inst.getLocalArtwork(widget.track)
+          : Future.value(null);
       final animatedFuture = AnimatedArtworkService.inst.fetchForTrack(
         widget.track,
         null,
@@ -169,9 +178,7 @@ class _AnimatedArtworkWidgetState extends State<AnimatedArtworkWidget> {
 
       if (_disposed || !mounted || _currentTrackKey != expectedKey) return;
 
-      if (widget.isPlaying) {
-        controller.play();
-      }
+      controller.play();
 
       debugPrint(
         '[AnimatedArtwork] initialized: ${controller.value.size.width}x${controller.value.size.height}',
@@ -194,24 +201,23 @@ class _AnimatedArtworkWidgetState extends State<AnimatedArtworkWidget> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(widget.borderRadius),
-      child: SizedBox(
-        width: widget.size,
-        height: widget.size,
+    return SizedBox.expand(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(widget.borderRadius),
         child: Stack(
+          fit: StackFit.expand,
           children: [
-            // Video layer (behind overlay, fades in when ready)
             if (_controller != null && _controller!.value.isInitialized)
-              FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _controller!.value.size.width,
-                  height: _controller!.value.size.height,
-                  child: VideoPlayer(_controller!),
+              Positioned.fill(
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: _controller!.value.size.width,
+                    height: _controller!.value.size.height,
+                    child: VideoPlayer(_controller!),
+                  ),
                 ),
               ),
-            // Overlay layer (static artwork) - always present, fades out when video ready
             Positioned.fill(
               child: AnimatedOpacity(
                 opacity: _videoReady ? 0.0 : 1.0,
@@ -234,7 +240,7 @@ class _AnimatedArtworkWidgetState extends State<AnimatedArtworkWidget> {
       color: theme.cardColor,
       child: Icon(
         Broken.musicnote,
-        size: widget.size * 0.29,
+        size: 48,
         color: theme.colorScheme.onSurfaceVariant,
       ),
     );

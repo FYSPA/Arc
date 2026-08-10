@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -77,7 +79,7 @@ class _ArtistTile extends StatelessWidget {
         child: SizedBox(
           width: 48,
           height: 48,
-          child: _ArtistArtwork(artistId: artist.id),
+          child: _ArtistArtwork(artistId: artist.id, artistName: artist.artist),
         ),
       ),
       title: Text(
@@ -99,8 +101,9 @@ class _ArtistTile extends StatelessWidget {
 
 class _ArtistArtwork extends StatefulWidget {
   final int artistId;
+  final String artistName;
 
-  const _ArtistArtwork({required this.artistId});
+  const _ArtistArtwork({required this.artistId, required this.artistName});
 
   @override
   State<_ArtistArtwork> createState() => _ArtistArtworkState();
@@ -112,9 +115,19 @@ class _ArtistArtworkState extends State<_ArtistArtwork> {
   @override
   void initState() {
     super.initState();
-    _artworkFuture = ArtworkService.inst.getArtwork(
+    _artworkFuture = _loadArtwork();
+  }
+
+  Future<Uint8List?> _loadArtwork() async {
+    final local = await ArtworkService.inst.getArtwork(
       widget.artistId,
       MediaType.artist,
+    );
+    if (local != null && local.isNotEmpty) return local;
+
+    return ArtworkService.inst.fetchArtistPhoto(
+      widget.artistName,
+      widget.artistId,
     );
   }
 

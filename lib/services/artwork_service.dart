@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../controller/settings_controller.dart';
 import '../data/models/track.dart';
+import 'artist_photo_service.dart';
 import 'media_store_service.dart';
 
 class ArtworkService {
@@ -16,6 +17,7 @@ class ArtworkService {
   static final inst = ArtworkService._();
 
   final _cache = <int, Uint8List>{};
+  final _imageProviderCache = <int, ImageProvider?>{};
   final _nullCache = <int, Set<MediaType>>{};
   final _loggedNulls = <int>{};
   Directory? _cacheDir;
@@ -155,6 +157,9 @@ class ArtworkService {
   }
 
   Future<ImageProvider?> getArtworkImage(ArcTrack track) async {
+    final cached = _imageProviderCache[track.id];
+    if (cached != null) return cached;
+
     final bytes = await getTrackArtwork(track);
     if (bytes == null || bytes.isEmpty) {
       if (_loggedNulls.add(track.id)) {
@@ -170,7 +175,13 @@ class ArtworkService {
         '[ArtworkService] loaded artwork for "${track.title}" (${bytes.length} bytes)',
       );
     }
-    return MemoryImage(bytes);
+    final image = MemoryImage(bytes);
+    _imageProviderCache[track.id] = image;
+    return image;
+  }
+
+  ImageProvider? getCachedImageProvider(int trackId) {
+    return _imageProviderCache[trackId];
   }
 
   String? getCachedPath(int id) {
@@ -179,8 +190,42 @@ class ArtworkService {
     return file.existsSync() ? file.path : null;
   }
 
+  Future<Uint8List?> fetchArtistPhoto(String artistName, int artistId) async {
+    if (_cache.containsKey(artistId)) return _cache[artistId];
+
+    final dir = await _directory;
+    final file = File('${dir.path}/$artistId.jpg');
+    if (await file.exists()) {
+      final bytes = await file.readAsBytes();
+      _cache[artistId] = bytes;
+      return bytes;
+    }
+
+    final url = await ArtistPhotoServiceWrapper.inst.getArtistPhotoUrl(
+      artistName,
+    );
+    if (url == null || url.isEmpty) return null;
+
+    try {
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return null;
+
+      final bytes = response.bodyBytes;
+      if (bytes.isEmpty) return null;
+
+      await file.writeAsBytes(bytes);
+      _cache[artistId] = bytes;
+      return bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> clearCache() async {
     _cache.clear();
+    _imageProviderCache.clear();
     _nullCache.clear();
     _loggedNulls.clear();
     final dir = await _directory;

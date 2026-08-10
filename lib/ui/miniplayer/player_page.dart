@@ -217,11 +217,16 @@ class _PlayerPageState extends State<PlayerPage> {
       _staticArtworkTrackId = trackId;
       _staticArtworkImage = null;
       if (track != null) {
-        ArtworkService.inst.getArtworkImage(track).then((img) {
-          if (mounted && _staticArtworkTrackId == trackId) {
-            setState(() => _staticArtworkImage = img);
-          }
-        });
+        final cached = ArtworkService.inst.getCachedImageProvider(track.id);
+        if (cached != null) {
+          _staticArtworkImage = cached;
+        } else {
+          ArtworkService.inst.getArtworkImage(track).then((img) {
+            if (mounted && _staticArtworkTrackId == trackId) {
+              setState(() => _staticArtworkImage = img);
+            }
+          });
+        }
       }
     }
 
