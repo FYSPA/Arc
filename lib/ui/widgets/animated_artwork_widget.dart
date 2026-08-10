@@ -178,7 +178,9 @@ class _AnimatedArtworkWidgetState extends State<AnimatedArtworkWidget> {
 
       if (_disposed || !mounted || _currentTrackKey != expectedKey) return;
 
-      controller.play();
+      if (widget.isPlaying) {
+        controller.play();
+      }
 
       debugPrint(
         '[AnimatedArtwork] initialized: ${controller.value.size.width}x${controller.value.size.height}',

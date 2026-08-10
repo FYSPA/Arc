@@ -22,11 +22,7 @@ class AlbumDetailPage extends StatelessWidget {
 
   static Widget _buildArtworkHeader(BuildContext context, ArcAlbum album) {
     final settings = context.watch<SettingsController>();
-    final player = context.watch<PlayerController>();
-    final isPlaying =
-        player.currentTrack?.albumId == album.id ||
-        (player.currentTrack?.album == album.album &&
-            player.currentTrack?.artist == album.artist);
+    const isPlaying = true;
     final pseudoTrack = ArcTrack(
       id: album.id,
       title: album.album,
