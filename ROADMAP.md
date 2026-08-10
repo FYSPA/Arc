@@ -1,6 +1,6 @@
 # Arc — Development Roadmap
 
-> Last updated: 2026-08-08
+> Last updated: 2026-08-10
 > Stack: Flutter + Provider + arc_engine + arx_canvas
 > Strategy: **Logic first → Design → Performance**
 
@@ -162,12 +162,33 @@
 
 ## Phase 7 — Animated Artwork
 
+> **Status:** ✅ Completed
+
+- [x] Animated artwork support via arx_canvas (Apple Music, Spotify Canvas)
+- [x] GIF/video artwork display in player page and album detail header
+- [x] Asset caching for animated artwork (CacheManager)
+- [x] Graceful fallback to static artwork (local MediaStore + online iTunes/Deezer/Spotify)
+- [x] Album detail: AnimatedArtworkWidget in header with static fallback
+- [x] Online artwork fallback in track list, albums grid, artists list, home page
+- [x] Artist photos via ArtistPhotoServiceWrapper (Deezer/AMP/Spotify)
+- [x] ImageProvider cache for instant artwork sharing between miniplayer/player
+- [x] Pre-cache album artwork during indexing
+- [x] Fix: video conflict between album detail and player (isPlaying sync)
+
+---
+
+## Phase 7B — Delete Songs
+
 > **Status:** Pending
 
-- [ ] Animated artwork support via arx_canvas
-- [ ] GIF/video artwork display in player page
-- [ ] Asset caching for animated artwork
-- [ ] Graceful fallback to static artwork
+- [ ] Android permission: `WRITE_EXTERNAL_STORAGE` with `maxSdkVersion="32"`
+- [ ] Native handler: `"deleteSong"` on `arc_app/media` channel (ContentResolver + File.delete)
+- [ ] Dart service: `MediaStoreService.deleteSong(id, filePath)`
+- [ ] Indexer: `removeTrack(ArcTrack)` method (remove from lists, invalidate sort cache)
+- [ ] Player: `removeFromQueueByTrack(ArcTrack)` + skip to next if deleted track is current
+- [ ] UI: Add "Delete" option with `Broken.trash` icon to TrackContextMenu
+- [ ] Confirmation dialog before permanent deletion
+- [ ] Snackbar confirmation after deletion
 
 ---
 
@@ -211,6 +232,7 @@
 | 5A | Track context menu | ✅ Completed | Logic |
 | 5B | Queue management | ✅ Completed | Logic |
 | 6 | Synced lyrics | ✅ Completed | Logic |
-| 7 | Animated artwork | ⏳ Pending | Logic |
+| 7 | Animated artwork | ✅ Completed | Logic |
+| 7B | Delete songs | ⏳ Pending | Logic |
 | 8 | Design polish | ⏳ Pending | Design |
 | 9 | Performance | ⏳ Pending | Performance |

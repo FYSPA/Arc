@@ -1,6 +1,6 @@
 # Arc — Roadmap de Desarrollo
 
-> Última actualización: 2026-08-08
+> Última actualización: 2026-08-10
 > Stack: Flutter + Provider + arc_engine + arx_canvas
 > Estrategia: **Lógica primero → Diseño → Performance**
 
@@ -162,12 +162,33 @@
 
 ## Fase 7 — Artwork Animado
 
+> **Estado:** ✅ Completada
+
+- [x] Soporte de artwork animado vía arx_canvas (Apple Music, Spotify Canvas)
+- [x] Display de artwork GIF/video en la página del player y header del detalle de álbum
+- [x] Caché de assets para artwork animado (CacheManager)
+- [x] Fallback graceful a artwork estático (local MediaStore + online iTunes/Deezer/Spotify)
+- [x] Detalle de álbum: AnimatedArtworkWidget en header con fallback estático
+- [x] Fallback online de artwork en lista de tracks, grid de álbumes, lista de artistas, home page
+- [x] Fotos de artistas vía ArtistPhotoServiceWrapper (Deezer/AMP/Spotify)
+- [x] Caché de ImageProvider para compartir artwork instantáneamente entre miniplayer/player
+- [x] Pre-caché de artwork de álbumes durante el indexado
+- [x] Fix: conflicto de video entre detalle de álbum y player (sincronización de isPlaying)
+
+---
+
+## Fase 7B — Eliminar Canciones
+
 > **Estado:** Pendiente
 
-- [ ] Soporte de artwork animado vía arx_canvas
-- [ ] Display de artwork GIF/video en la página del player
-- [ ] Caché de assets para artwork animado
-- [ ] Fallback graceful a artwork estático
+- [ ] Permiso Android: `WRITE_EXTERNAL_STORAGE` con `maxSdkVersion="32"`
+- [ ] Handler nativo: `"deleteSong"` en canal `arc_app/media` (ContentResolver + File.delete)
+- [ ] Servicio Dart: `MediaStoreService.deleteSong(id, filePath)`
+- [ ] Indexer: método `removeTrack(ArcTrack)` (quitar de listas, invalidar caché de sort)
+- [ ] Player: `removeFromQueueByTrack(ArcTrack)` + saltar a siguiente si la canción eliminada es la actual
+- [ ] UI: Agregar opción "Eliminar" con icono `Broken.trash` en TrackContextMenu
+- [ ] Diálogo de confirmación antes de eliminación permanente
+- [ ] Snackbar de confirmación después de la eliminación
 
 ---
 
@@ -211,6 +232,7 @@
 | 5A | Menú contextual | ✅ Completada | Lógica |
 | 5B | Gestión de cola | ✅ Completada | Lógica |
 | 6 | Letras sincronizadas | ✅ Completada | Lógica |
-| 7 | Artwork animado | ⏳ Pendiente | Lógica |
+| 7 | Artwork animado | ✅ Completada | Lógica |
+| 7B | Eliminar canciones | ⏳ Pendiente | Lógica |
 | 8 | Pulido de diseño | ⏳ Pendiente | Diseño |
 | 9 | Performance | ⏳ Pendiente | Performance |
