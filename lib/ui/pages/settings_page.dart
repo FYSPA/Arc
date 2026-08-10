@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 import '../../controller/settings_controller.dart';
 import '../../core/broken_icons.dart';
 import '../../core/enums.dart';
+import '../../services/animated_artwork_service.dart';
+import '../../services/artist_photo_service.dart';
+import '../../services/artwork_service.dart';
 import '../dialogs/color_picker_dialog.dart';
 import '../dialogs/language_dialog.dart';
 import '../dialogs/library_tabs_dialog.dart';
@@ -191,8 +194,9 @@ class SettingsPage extends StatelessWidget {
                 ),
                 SettingsTile(
                   icon: Broken.image,
-                  title: 'Artwork Cache',
-                  subtitle: '${settings.artworkCacheSize}px',
+                  title: 'Clear Artwork Cache',
+                  subtitle: 'Refresh artwork from source',
+                  onTap: () => _clearArtworkCache(context),
                 ),
                 SettingsTile(
                   icon: Broken.play_circle,
@@ -465,6 +469,38 @@ String _fabTypeText(String type) {
     default:
       return type;
   }
+}
+
+Future<void> _clearArtworkCache(BuildContext context) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Clear Artwork Cache'),
+      content: const Text(
+        'All cached artwork will be re-fetched on next load. Continue?',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.tonal(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Clear'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+
+  await ArtworkService.inst.clearCache();
+  await AnimatedArtworkService.inst.clearCache();
+  ArtistPhotoServiceWrapper.inst.clearCache();
+
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(const SnackBar(content: Text('Artwork cache cleared')));
 }
 
 void _showGlowPositionDialog(
