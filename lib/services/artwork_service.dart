@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../controller/settings_controller.dart';
 import '../data/models/track.dart';
+import 'animated_artwork_service.dart';
 import 'artist_photo_service.dart';
 import 'media_store_service.dart';
 
@@ -151,6 +152,27 @@ class ArtworkService {
       await file.writeAsBytes(onlineBytes);
       _cache[cacheId] = onlineBytes;
       return onlineBytes;
+    }
+
+    final animated = await AnimatedArtworkService.inst.fetchForTrack(
+      track,
+      null,
+    );
+    if (animated?.staticImageUrl != null &&
+        animated!.staticImageUrl!.isNotEmpty) {
+      try {
+        final response = await http
+            .get(Uri.parse(animated.staticImageUrl!))
+            .timeout(const Duration(seconds: 10));
+        if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+          final dir = await _directory;
+          final cacheId = track.albumId ?? track.id;
+          final file = File('${dir.path}/$cacheId.jpg');
+          await file.writeAsBytes(response.bodyBytes);
+          _cache[cacheId] = response.bodyBytes;
+          return response.bodyBytes;
+        }
+      } catch (_) {}
     }
 
     return null;
