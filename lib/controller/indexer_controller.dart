@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../data/models/track.dart';
@@ -8,6 +10,7 @@ import '../services/permission_service.dart';
 import 'settings_controller.dart';
 
 import '../core/utils.dart';
+import '../services/artwork_service.dart';
 
 enum SortType { name, date, duration, artist, album }
 
@@ -211,6 +214,10 @@ class IndexerController extends ChangeNotifier {
     _invalidateSortCache();
     notifyListeners();
 
+    // Supersede any in-flight thumbnail preload from a previous scan so it
+    // doesn't keep decoding now-stale album ids (OPTIMIZACIONES.md §2.3).
+    ArtworkService.inst.cancelPreload();
+
     try {
       if (!_hasPermission) {
         final granted = await checkPermission();
@@ -255,6 +262,23 @@ class IndexerController extends ChangeNotifier {
         }
         _albumList = albumByName.values.toList()
           ..sort((a, b) => a.album.compareTo(b.album));
+
+        // Best-effort background generation of list thumbnails so the first
+        // navigation after a scan is instant (Opción B / §2.3). Fire-and-forget:
+        // it must not block the scan, and cancelPreload() above lets a newer
+        // scan supersede it.
+        final albumIds = _albumList
+            .map((a) => a.id)
+            .where((id) => id != 0)
+            .toList();
+        if (albumIds.isNotEmpty) {
+          unawaited(
+            ArtworkService.inst.preloadAlbumThumbnails(
+              albumIds,
+              SettingsController.inst.artworkQuality.listDecodeSize,
+            ),
+          );
+        }
       } catch (e) {
         logD('[ARC] scanDevice: queryAlbums ERROR $e');
       }

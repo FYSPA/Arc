@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:arx_canvas/arx_canvas.dart' as arx;
 import 'package:flutter/material.dart';
@@ -25,6 +26,7 @@ class ArtworkService {
   static const _maxCache = 300;
   final _nullCache = <int, Set<MediaType>>{};
   final _loggedNulls = <int>{};
+  int _preloadToken = 0;
   Directory? _cacheDir;
 
   arx.ArtworkService? _onlineService;
@@ -454,12 +456,80 @@ class ArtworkService {
     return image;
   }
 
+  /// Reads (or generates + persists) a resized PNG thumbnail for [id] at
+  /// [size] px. Thumbnails are tiny on disk (~30-60KB) so list covers load
+  /// without reading/decoding the full-res artwork (OPTIMIZACIONES.md §2.3,
+  /// Opción B).
+  Future<Uint8List?> getThumbnailBytes(int id, MediaType type, int size) async {
+    final dir = await _directory;
+    final file = File('${dir.path}/$id._t$size.png');
+    if (await file.exists()) return file.readAsBytes();
+
+    final full = await getArtwork(id, type);
+    if (full == null || full.isEmpty) return null;
+
+    Uint8List? png;
+    try {
+      png = await _encodeThumbnail(full, size);
+    } catch (_) {
+      return full;
+    }
+    if (png == null || png.isEmpty) return full;
+
+    try {
+      await file.writeAsBytes(png);
+      _trimDiskIfNeeded();
+    } catch (_) {}
+    return png;
+  }
+
+  Future<Uint8List?> _encodeThumbnail(Uint8List bytes, int size) async {
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final ui.Image image = frame.image;
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    final w = image.width;
+    final h = image.height;
+    final side = w < h ? w : h;
+    final src = ui.Rect.fromLTWH(
+      (w - side) / 2.0,
+      (h - side) / 2.0,
+      side.toDouble(),
+      side.toDouble(),
+    );
+    final dst = ui.Rect.fromLTWH(0, 0, size.toDouble(), size.toDouble());
+    canvas.drawImageRect(image, src, dst, ui.Paint());
+    final picture = recorder.endRecording();
+    final resized = await picture.toImage(size, size);
+    final data = await resized.toByteData(format: ui.ImageByteFormat.png);
+    frame.image.dispose();
+    resized.dispose();
+    return data?.buffer.asUint8List();
+  }
+
+  /// Best-effort background generation of list thumbnails for [ids] so the
+  /// first navigation after a scan is instant (Opción B / §2.3). Yields between
+  /// items to keep the UI responsive. A newer call (or [cancelPreload])
+  /// supersedes an in-flight preload.
+  Future<void> preloadAlbumThumbnails(List<int> ids, int size) async {
+    final myToken = ++_preloadToken;
+    for (final id in ids) {
+      if (myToken != _preloadToken) return;
+      try {
+        await getThumbnailBytes(id, MediaType.album, size);
+      } catch (_) {}
+      await Future.delayed(Duration.zero);
+    }
+  }
+
+  void cancelPreload() => _preloadToken++;
+
   /// Returns a cached [ImageProvider] for [track] decoded at [pixelSize].
   /// Reuses a single provider instance per `id:size` so Flutter's ImageCache
-  /// does not re-decode the (full-res) artwork on every list cell / scroll.
-  /// When [onlineFallback] is true and no local art exists, an online fetch
-  /// fills the missing art (once) — but already-cached local art never hits
-  /// the network.
+  /// does not re-decode artwork on every list cell / scroll. When [onlineFallback]
+  /// is true and no local art exists, an online fetch fills the missing art
+  /// (once) — but already-cached local art never hits the network.
   Future<ImageProvider?> getArtworkProvider(
     ArcTrack track,
     int pixelSize, {
@@ -469,11 +539,18 @@ class ArtworkService {
     final cached = _imageProviderCache[key];
     if (cached != null) return cached;
 
-    var bytes = await getLocalArtwork(track);
+    Uint8List? bytes;
+    final albumId = track.albumId;
+    if (albumId != null) {
+      bytes = await getThumbnailBytes(albumId, MediaType.album, pixelSize);
+    }
     if (bytes == null || bytes.isEmpty) {
-      if (!onlineFallback) return null;
-      bytes = await getTrackArtwork(track);
-      if (bytes == null || bytes.isEmpty) return null;
+      bytes = await getLocalArtwork(track);
+      if (bytes == null || bytes.isEmpty) {
+        if (!onlineFallback) return null;
+        bytes = await getTrackArtwork(track);
+        if (bytes == null || bytes.isEmpty) return null;
+      }
     }
 
     final provider = ResizeImage(
