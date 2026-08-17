@@ -13,6 +13,7 @@ import '../../../data/models/track.dart';
 import '../../../services/artwork_service.dart';
 import '../../../services/media_store_service.dart';
 import '../../widgets/animated_artwork_widget.dart';
+import '../../widgets/artwork.dart';
 import '../../widgets/track_context_menu.dart';
 
 class AlbumDetailPage extends StatelessWidget {
@@ -235,7 +236,11 @@ class _StaticAlbumHeaderState extends State<_StaticAlbumHeader> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (_bytes != null) {
-      return Image.memory(_bytes!, fit: BoxFit.cover, gaplessPlayback: true);
+      return Image(
+        image: resizeMemoryArtwork(_bytes!, 560),
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+      );
     }
     return Container(
       color: theme.colorScheme.surfaceContainerHighest,

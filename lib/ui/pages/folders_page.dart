@@ -8,6 +8,7 @@ import '../../core/dimensions.dart';
 import '../../core/extensions.dart';
 import '../../data/models/track.dart';
 import '../../services/media_store_service.dart';
+import '../../core/utils.dart';
 import '../widgets/track_context_menu.dart';
 
 class FoldersPage extends StatefulWidget {
@@ -28,12 +29,22 @@ class _FoldersPageState extends State<FoldersPage> {
   }
 
   Future<void> _loadFolders() async {
-    final folders = await MediaStoreService.inst.queryFolders();
-    if (mounted) {
-      setState(() {
-        _folders = folders;
-        _isLoading = false;
-      });
+    try {
+      final folders = await MediaStoreService.inst.queryFolders();
+      if (mounted) {
+        setState(() {
+          _folders = folders;
+          _isLoading = false;
+        });
+      }
+    } catch (e, st) {
+      logE('[ARC] loadFolders failed: $e', st);
+      if (mounted) {
+        setState(() {
+          _folders = [];
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -76,6 +87,7 @@ class _FoldersPageState extends State<FoldersPage> {
 
     return ListView.builder(
       padding: const EdgeInsets.only(top: 8, bottom: kBottomPaddingMiniplayer),
+      itemExtent: 64.0,
       itemCount: _folders.length,
       itemBuilder: (context, index) {
         final folder = _folders[index];
@@ -186,6 +198,7 @@ class _FolderDetailPage extends StatelessWidget {
             )
           : ListView.builder(
               padding: const EdgeInsets.only(bottom: kBottomPaddingMiniplayer),
+              itemExtent: 64.0,
               itemCount: tracks.length,
               itemBuilder: (context, index) {
                 final track = tracks[index];

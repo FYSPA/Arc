@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import '../../services/media_store_service.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +10,7 @@ import '../../core/broken_icons.dart';
 import '../../core/extensions.dart';
 import '../../data/models/track.dart';
 import '../../services/artwork_service.dart';
+import '../../controller/settings_controller.dart';
 import '../widgets/track_context_menu.dart';
 
 class HomePage extends StatelessWidget {
@@ -278,7 +281,12 @@ class _HomeAlbumCard extends StatelessWidget {
             child: SizedBox(
               width: 110,
               height: 110,
-              child: _ArtworkWidget(id: album.id, type: MediaType.album),
+              child: _ArtworkWidget(
+                id: album.id,
+                type: MediaType.album,
+                albumName: album.album,
+                artistName: album.artist,
+              ),
             ),
           ),
           const SizedBox(height: 6),
@@ -308,14 +316,15 @@ class _ArtworkWidget extends StatefulWidget {
   final MediaType type;
   final ArcTrack? track;
   final String? artistName;
+  final String? albumName;
 
   const _ArtworkWidget({
     required this.id,
     required this.type,
     this.track,
     this.artistName,
+    this.albumName,
   });
-
   @override
   State<_ArtworkWidget> createState() => _ArtworkWidgetState();
 }
@@ -329,25 +338,46 @@ class _ArtworkWidgetState extends State<_ArtworkWidget> {
     _artworkFuture = _loadArtwork();
   }
 
-  Future<dynamic> _loadArtwork() async {
+  Future<ImageProvider?> _loadArtwork() async {
+    final size = SettingsController.inst.artworkQuality.listDecodeSize;
+    final cached = ArtworkService.inst.getCachedImageProvider(
+      widget.id,
+      namespace: 'home',
+    );
+    if (cached != null) return cached;
+
+    Uint8List? bytes;
     if (widget.track != null) {
-      return ArtworkService.inst.getTrackArtwork(widget.track!);
-    }
-
-    if (widget.type == MediaType.artist && widget.artistName != null) {
-      final local = await ArtworkService.inst.getArtwork(
-        widget.id,
-        widget.type,
-      );
-      if (local != null && local.isNotEmpty) return local;
-
-      return ArtworkService.inst.fetchArtistPhoto(
+      bytes = await ArtworkService.inst.getLocalArtwork(widget.track!);
+      if (bytes == null || bytes.isEmpty) {
+        bytes = await ArtworkService.inst.getTrackArtwork(widget.track!);
+      }
+    } else if (widget.type == MediaType.artist && widget.artistName != null) {
+      bytes = await ArtworkService.inst.getArtwork(widget.id, widget.type);
+      if (bytes == null || bytes.isEmpty) {
+        bytes = await ArtworkService.inst.fetchArtistPhoto(
+          widget.artistName!,
+          widget.id,
+        );
+      }
+    } else if (widget.albumName != null && widget.artistName != null) {
+      bytes = await ArtworkService.inst.getHighResAlbumArt(
+        widget.albumName!,
         widget.artistName!,
-        widget.id,
+        id: widget.id,
       );
+    } else {
+      bytes = await ArtworkService.inst.getArtwork(widget.id, widget.type);
     }
 
-    return ArtworkService.inst.getArtwork(widget.id, widget.type);
+    if (bytes == null || bytes.isEmpty) return null;
+    final provider = ResizeImage(MemoryImage(bytes), width: size, height: size);
+    ArtworkService.inst.cacheImageProvider(
+      widget.id,
+      provider,
+      namespace: 'home',
+    );
+    return provider;
   }
 
   @override
@@ -358,8 +388,8 @@ class _ArtworkWidgetState extends State<_ArtworkWidget> {
       future: _artworkFuture,
       builder: (context, snapshot) {
         if (snapshot.hasData && snapshot.data != null) {
-          return Image.memory(
-            snapshot.data!,
+          return Image(
+            image: snapshot.data! as ImageProvider,
             fit: BoxFit.cover,
             gaplessPlayback: true,
           );

@@ -7,6 +7,8 @@ import 'package:palette_generator/palette_generator.dart';
 
 import '../core/constans.dart';
 
+import '../core/utils.dart';
+
 class _PaletteInput {
   final Uint8List rgbaBytes;
   final int width;
@@ -43,11 +45,18 @@ class CurrentColorController extends ChangeNotifier {
     }
 
     _isExtracting = true;
-    notifyListeners();
+    final sw = Stopwatch()..start();
 
     try {
-      final imageStream = imageProvider.resolve(
+      final resizeSw = Stopwatch()..start();
+      final resized = ResizeImage(imageProvider, width: 50, height: 50);
+
+      final imageStream = resized.resolve(
         const ImageConfiguration(devicePixelRatio: 1.0),
+      );
+      resizeSw.stop();
+      logD(
+        '[PERF] extractFromImage resolve: ${resizeSw.elapsedMilliseconds}ms',
       );
 
       final completer = Completer<ui.Image?>();
@@ -64,15 +73,28 @@ class CurrentColorController extends ChangeNotifier {
       );
       imageStream.addListener(listener);
 
+      final imageDecodeSw = Stopwatch()..start();
       final image = await completer.future;
+      imageDecodeSw.stop();
+      logD(
+        '[PERF] extractFromImage decode: ${imageDecodeSw.elapsedMilliseconds}ms',
+      );
       if (image == null) {
         _resetToDefault();
         return;
       }
 
+      final width = image.width;
+      final height = image.height;
+      final byteDataSw = Stopwatch()..start();
       final byteData = await image.toByteData(
         format: ui.ImageByteFormat.rawRgba,
       );
+      byteDataSw.stop();
+      logD(
+        '[PERF] extractFromImage toByteData ${width}x$height: ${byteDataSw.elapsedMilliseconds}ms',
+      );
+      image.dispose();
 
       if (byteData == null) {
         _resetToDefault();
@@ -80,12 +102,15 @@ class CurrentColorController extends ChangeNotifier {
       }
 
       final rgbaBytes = byteData.buffer.asUint8List();
-      final w = image.width;
-      final h = image.height;
 
+      final paletteSw = Stopwatch()..start();
       final palette = await compute(
         _extractPalette,
-        _PaletteInput(rgbaBytes, w, h),
+        _PaletteInput(rgbaBytes, width, height),
+      );
+      paletteSw.stop();
+      logD(
+        '[PERF] extractFromImage PaletteGenerator: ${paletteSw.elapsedMilliseconds}ms',
       );
 
       final dominant = palette.dominantColor?.color;
@@ -104,7 +129,8 @@ class CurrentColorController extends ChangeNotifier {
       _resetToDefault();
     } finally {
       _isExtracting = false;
-      notifyListeners();
+      sw.stop();
+      logD('[PERF] extractFromImage TOTAL: ${sw.elapsedMilliseconds}ms');
     }
   }
 

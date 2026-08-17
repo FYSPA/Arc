@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -10,7 +8,7 @@ import '../../core/dimensions.dart';
 import '../../data/models/album.dart';
 import '../../data/models/track.dart';
 import '../../services/artwork_service.dart';
-import '../../services/media_store_service.dart';
+import '../../controller/settings_controller.dart';
 import 'subpages/album_detail_page.dart';
 
 class AlbumsPage extends StatelessWidget {
@@ -136,13 +134,7 @@ class _AlbumArtworkState extends State<_AlbumArtwork> {
     _artworkFuture = _loadArtwork();
   }
 
-  Future<Uint8List?> _loadArtwork() async {
-    final local = await ArtworkService.inst.getArtwork(
-      widget.album.id,
-      MediaType.album,
-    );
-    if (local != null && local.isNotEmpty) return local;
-
+  Future<ImageProvider?> _loadArtwork() async {
     final pseudoTrack = ArcTrack(
       id: widget.album.id,
       title: widget.album.album,
@@ -150,7 +142,11 @@ class _AlbumArtworkState extends State<_AlbumArtwork> {
       album: widget.album.album,
       albumId: widget.album.id,
     );
-    return ArtworkService.inst.getTrackArtwork(pseudoTrack);
+    return ArtworkService.inst.getArtworkProvider(
+      pseudoTrack,
+      SettingsController.inst.artworkQuality.listDecodeSize,
+      onlineFallback: true,
+    );
   }
 
   @override
@@ -161,8 +157,8 @@ class _AlbumArtworkState extends State<_AlbumArtwork> {
       future: _artworkFuture,
       builder: (context, snapshot) {
         if (snapshot.hasData && snapshot.data != null) {
-          return Image.memory(
-            snapshot.data!,
+          return Image(
+            image: snapshot.data! as ImageProvider,
             fit: BoxFit.cover,
             gaplessPlayback: true,
           );

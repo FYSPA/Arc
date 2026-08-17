@@ -38,9 +38,7 @@ class _OnboardingPermissionsPageState extends State<OnboardingPermissionsPage> {
     final savedFolders = context.read<SettingsController>().foldersToScan;
     setState(() {
       _folders = folders;
-      _selectedPaths = savedFolders.isEmpty
-          ? folders.map((f) => f['path'] as String).toSet()
-          : savedFolders.toSet();
+      _selectedPaths = savedFolders.isEmpty ? {} : savedFolders.toSet();
       _isLoadingFolders = false;
     });
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -12,6 +13,8 @@ import '../../services/artwork_service.dart';
 import '../widgets/animated_artwork_widget.dart';
 import 'lyrics_view.dart';
 
+import '../../core/utils.dart';
+
 class PlayerPage extends StatefulWidget {
   const PlayerPage({super.key});
 
@@ -23,41 +26,100 @@ class _PlayerPageState extends State<PlayerPage> {
   bool _showLyrics = false;
   bool _showQueue = false;
   int? _lastTrackId;
-  ImageProvider? _staticArtworkImage;
-  int? _staticArtworkTrackId;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _extractColor();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _extractColor();
+      });
     });
   }
 
   Future<void> _extractColor() async {
     if (!mounted) return;
+    final sw = Stopwatch()..start();
     final player = context.read<PlayerController>();
     final colorCtrl = context.read<CurrentColorController>();
     if (player.currentTrack != null) {
-      final image = await ArtworkService.inst.getArtworkImage(
+      final bytesSw = Stopwatch()..start();
+      // Use the cached local artwork for the palette; only fall back to an
+      // online fetch when the local art is genuinely missing (no baja→alta).
+      var bytes = await ArtworkService.inst.getLocalArtwork(
         player.currentTrack!,
       );
-      if (mounted) colorCtrl.extractFromImage(image);
+      if (bytes == null || bytes.isEmpty) {
+        bytes = await ArtworkService.inst.getTrackArtwork(player.currentTrack!);
+      }
+      bytesSw.stop();
+      logD(
+        '[PERF] _extractColor artwork: ${bytesSw.elapsedMilliseconds}ms (null=${bytes == null})',
+      );
+      if (mounted) {
+        final image = (bytes != null && bytes.isNotEmpty)
+            ? MemoryImage(bytes)
+            : null;
+        final paletteSw = Stopwatch()..start();
+        await colorCtrl.extractFromImage(image);
+        paletteSw.stop();
+        logD(
+          '[PERF] _extractColor palette: ${paletteSw.elapsedMilliseconds}ms',
+        );
+      }
     }
+    sw.stop();
+    logD('[PERF] _extractColor TOTAL: ${sw.elapsedMilliseconds}ms');
   }
+
+  int _buildCount = 0;
+  final _buildSw = Stopwatch();
 
   @override
   Widget build(BuildContext context) {
+    _buildSw
+      ..reset()
+      ..start();
+    final buildNum = _buildCount++;
     final theme = Theme.of(context);
-    final player = context.watch<PlayerController>();
+    final data = context
+        .select<
+          PlayerController,
+          ({
+            int? currentTrackId,
+            ArcTrack? currentTrack,
+            String title,
+            String artist,
+            String album,
+            bool isPlaying,
+            ArcRepeatMode repeatMode,
+            bool shuffleMode,
+          })
+        >(
+          (p) => (
+            currentTrackId: p.currentTrack?.id,
+            currentTrack: p.currentTrack,
+            title: p.title,
+            artist: p.artist,
+            album: p.album,
+            isPlaying: p.isPlaying,
+            repeatMode: p.repeatMode,
+            shuffleMode: p.shuffleMode,
+          ),
+        );
     final colorCtrl = context.watch<CurrentColorController>();
     final accent = colorCtrl.accentColor;
 
-    if (player.currentTrack?.id != _lastTrackId) {
-      _lastTrackId = player.currentTrack?.id;
+    if (data.currentTrackId != _lastTrackId) {
+      _lastTrackId = data.currentTrackId;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _extractColor();
+      });
     }
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
+    final player = context.read<PlayerController>();
+
+    final result = AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarBrightness: theme.brightness == Brightness.dark
@@ -96,6 +158,13 @@ class _PlayerPageState extends State<PlayerPage> {
         ),
       ),
     );
+
+    _buildSw.stop();
+    final ms = _buildSw.elapsedMilliseconds;
+    if (ms > 16 || buildNum % 60 == 0) {
+      logD('[PERF] PlayerPage.build #$buildNum — ${ms}ms');
+    }
+    return result;
   }
 
   Widget _buildAppBar(
@@ -184,8 +253,7 @@ class _PlayerPageState extends State<PlayerPage> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32.0),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
+      child: Container(
         width: size,
         height: size,
         decoration: BoxDecoration(
@@ -193,8 +261,8 @@ class _PlayerPageState extends State<PlayerPage> {
           boxShadow: [
             BoxShadow(
               color: accent.withOpacityExt(0.3),
-              blurRadius: 40,
-              offset: const Offset(0, 16),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -206,46 +274,13 @@ class _PlayerPageState extends State<PlayerPage> {
                 size: size,
                 borderRadius: 24,
               )
-            : _buildStaticArtwork(track, size, theme),
-      ),
-    );
-  }
-
-  Widget _buildStaticArtwork(ArcTrack? track, double size, ThemeData theme) {
-    final trackId = track?.id;
-    if (trackId != _staticArtworkTrackId) {
-      _staticArtworkTrackId = trackId;
-      _staticArtworkImage = null;
-      if (track != null) {
-        final cached = ArtworkService.inst.getCachedImageProvider(track.id);
-        if (cached != null) {
-          _staticArtworkImage = cached;
-        } else {
-          ArtworkService.inst.getArtworkImage(track).then((img) {
-            if (mounted && _staticArtworkTrackId == trackId) {
-              setState(() => _staticArtworkImage = img);
-            }
-          });
-        }
-      }
-    }
-
-    final imageProvider = _staticArtworkImage;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: imageProvider != null
-            ? Image(image: imageProvider, fit: BoxFit.cover)
-            : Container(
-                color: theme.cardColor,
-                child: Icon(
-                  Broken.musicnote,
-                  size: size * 0.29,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
+            : track != null
+            ? StaticArtworkWidget(
+                key: ValueKey('static_artwork_${track.id}'),
+                track: track,
+                size: size,
+              )
+            : SizedBox(width: size, height: size),
       ),
     );
   }
@@ -288,59 +323,7 @@ class _PlayerPageState extends State<PlayerPage> {
     PlayerController player,
     Color accent,
   ) {
-    final position = player.position;
-    final duration = player.duration;
-    final maxMs = duration.inMilliseconds > 0
-        ? duration.inMilliseconds.toDouble()
-        : 1.0;
-    final currentMs = position.inMilliseconds.toDouble().clamp(0.0, maxMs);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: Column(
-        children: [
-          SliderTheme(
-            data: SliderThemeData(
-              activeTrackColor: accent,
-              inactiveTrackColor: accent.withOpacityExt(0.2),
-              thumbColor: accent,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-              trackHeight: 3,
-            ),
-            child: Slider(
-              value: currentMs,
-              max: maxMs,
-              onChanged: (value) {
-                player.seek(Duration(milliseconds: value.toInt()));
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  _formatDuration(position),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                Text(
-                  _formatDuration(duration),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    return _ProgressBar(accent: accent);
   }
 
   Widget _buildControls(
@@ -628,10 +611,209 @@ class _PlayerPageState extends State<PlayerPage> {
         return Broken.repeate_one;
     }
   }
+}
+
+class _ProgressBar extends StatefulWidget {
+  final Color accent;
+  const _ProgressBar({required this.accent});
+
+  @override
+  State<_ProgressBar> createState() => _ProgressBarState();
+}
+
+class _ProgressBarState extends State<_ProgressBar> {
+  double? _dragValue;
+  bool _isDragging = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final player = context
+        .select<PlayerController, ({Duration pos, Duration dur})>(
+          (p) => (pos: p.position, dur: p.duration),
+        );
+    final position = player.pos;
+    final duration = player.dur;
+    final maxMs = duration.inMilliseconds > 0
+        ? duration.inMilliseconds.toDouble()
+        : 1.0;
+    final currentMs = _isDragging && _dragValue != null
+        ? _dragValue!
+        : position.inMilliseconds.toDouble().clamp(0.0, maxMs);
+
+    final displayPosition = _isDragging && _dragValue != null
+        ? Duration(milliseconds: _dragValue!.toInt())
+        : position;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        children: [
+          SliderTheme(
+            data: SliderThemeData(
+              activeTrackColor: widget.accent,
+              inactiveTrackColor: widget.accent.withOpacityExt(0.2),
+              thumbColor: widget.accent,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+              trackHeight: 3,
+            ),
+            child: Slider(
+              value: currentMs.clamp(0.0, maxMs),
+              max: maxMs,
+              onChangeStart: (value) {
+                _isDragging = true;
+                _dragValue = value;
+                setState(() {});
+              },
+              onChanged: (value) {
+                _dragValue = value;
+                setState(() {});
+              },
+              onChangeEnd: (value) {
+                _isDragging = false;
+                _dragValue = null;
+                context.read<PlayerController>().seek(
+                  Duration(milliseconds: value.toInt()),
+                );
+                setState(() {});
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _formatDuration(displayPosition),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  _formatDuration(duration),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   String _formatDuration(Duration d) {
     final minutes = d.inMinutes;
     final seconds = d.inSeconds % 60;
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+}
+
+class StaticArtworkWidget extends StatefulWidget {
+  final ArcTrack track;
+  final double size;
+
+  const StaticArtworkWidget({
+    super.key,
+    required this.track,
+    required this.size,
+  });
+
+  @override
+  State<StaticArtworkWidget> createState() => _StaticArtworkWidgetState();
+}
+
+class _StaticArtworkWidgetState extends State<StaticArtworkWidget> {
+  ImageProvider? _image;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadArtwork();
+  }
+
+  @override
+  void didUpdateWidget(covariant StaticArtworkWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.track.id != widget.track.id) {
+      _loadArtwork();
+    }
+  }
+
+  void _loadArtwork() {
+    final sw = Stopwatch()..start();
+    logD('[PERF] StaticArtwork #${widget.track.id} — loading local/cached...');
+    ArtworkService.inst.getLocalArtwork(widget.track).then((bytes) {
+      if (!mounted) return;
+      if (bytes != null && bytes.isNotEmpty) {
+        final image = ResizeImage(
+          MemoryImage(bytes),
+          width: 1080,
+          height: 1080,
+        );
+        ArtworkService.inst.cacheImageProvider(
+          widget.track.id,
+          image,
+          namespace: 'player',
+        );
+        setState(() => _image = image);
+        logD(
+          '[PERF] StaticArtwork #${widget.track.id} — local loaded in ${sw.elapsedMilliseconds}ms',
+        );
+        return;
+      }
+      // Local art missing: fill from online (no flash — nothing shown yet).
+      ArtworkService.inst.getTrackArtwork(widget.track).then((online) {
+        if (!mounted) return;
+        if (online != null && online.isNotEmpty) {
+          final image = ResizeImage(
+            MemoryImage(online),
+            width: 1080,
+            height: 1080,
+          );
+          ArtworkService.inst.cacheImageProvider(
+            widget.track.id,
+            image,
+            namespace: 'player',
+          );
+          setState(() => _image = image);
+        } else {
+          setState(() => _image = null);
+        }
+        logD(
+          '[PERF] StaticArtwork #${widget.track.id} — online fill in ${sw.elapsedMilliseconds}ms (null=${online == null})',
+        );
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final imageProvider = _image;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: SizedBox(
+        width: widget.size,
+        height: widget.size,
+        child: imageProvider != null
+            ? Image(
+                image: imageProvider,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+              )
+            : Container(
+                color: Theme.of(context).cardColor,
+                child: Icon(
+                  Broken.musicnote,
+                  size: widget.size * 0.29,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+      ),
+    );
   }
 }

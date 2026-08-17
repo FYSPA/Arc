@@ -23,7 +23,7 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: b6a028c55f89554b3a58b6a0336b13b0915e615c
+      resolved-ref: "845f837faaac92706e82e4cca352a2441ad35ca4"
       url: "https://github.com/FYSPA/Arx-Canvas.git"
     source: git
     version: "1.0.0"

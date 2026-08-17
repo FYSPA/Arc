@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 
 import '../../controller/current_color_controller.dart';
 import '../../controller/player_controller.dart';
+import '../../controller/settings_controller.dart';
 import '../../core/broken_icons.dart';
 import '../../core/extensions.dart';
 import '../../services/artwork_service.dart';
+import '../widgets/artwork.dart';
 import 'player_page.dart';
 
 class MiniplayerBar extends StatefulWidget {
@@ -22,20 +24,54 @@ class _MiniplayerBarState extends State<MiniplayerBar> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final player = context.watch<PlayerController>();
-    final colorCtrl = context.watch<CurrentColorController>();
-    final accent = colorCtrl.accentColor;
+    final playerData = context
+        .select<
+          PlayerController,
+          ({
+            bool hasTrack,
+            int? trackId,
+            String title,
+            String artist,
+            bool isPlaying,
+          })
+        >(
+          (p) => (
+            hasTrack: p.hasTrack,
+            trackId: p.currentTrack?.id,
+            title: p.title,
+            artist: p.artist,
+            isPlaying: p.isPlaying,
+          ),
+        );
+    final accent = context.select<CurrentColorController, Color>(
+      (c) => c.accentColor,
+    );
     final borderRadius = BorderRadius.vertical(top: Radius.circular(20.0));
-    final hasTrack = player.hasTrack;
+    final hasTrack = playerData.hasTrack;
 
-    final trackId = player.currentTrack?.id;
+    final trackId = playerData.trackId;
     if (trackId != _cachedTrackId) {
       _cachedTrackId = trackId;
       _cachedImage = null;
-      if (player.currentTrack != null) {
-        ArtworkService.inst.getArtworkImage(player.currentTrack!).then((img) {
-          if (mounted && _cachedTrackId == trackId) {
-            setState(() => _cachedImage = img);
+      final currentTrack = context.read<PlayerController>().currentTrack;
+      if (currentTrack != null) {
+        ArtworkService.inst.getHighResArtwork(currentTrack).then((bytes) {
+          if (mounted &&
+              _cachedTrackId == trackId &&
+              bytes != null &&
+              bytes.isNotEmpty) {
+            final image = resizeMemoryArtwork(
+              bytes,
+              SettingsController.inst.artworkQuality.listDecodeSize,
+            );
+            ArtworkService.inst.cacheImageProvider(
+              trackId!,
+              image,
+              namespace: 'thumb',
+            );
+            setState(() {
+              _cachedImage = image;
+            });
           }
         });
       }
@@ -87,7 +123,7 @@ class _MiniplayerBarState extends State<MiniplayerBar> {
                   padding: const EdgeInsets.all(12.0),
                   child: Row(
                     children: [
-                      _buildArtwork(context, player, theme),
+                      _buildArtwork(context, theme, trackId),
                       const SizedBox(width: 12.0),
                       Expanded(
                         child: Column(
@@ -95,8 +131,8 @@ class _MiniplayerBarState extends State<MiniplayerBar> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              player.title.isNotEmpty
-                                  ? player.title
+                              playerData.title.isNotEmpty
+                                  ? playerData.title
                                   : 'No track playing',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -108,10 +144,10 @@ class _MiniplayerBarState extends State<MiniplayerBar> {
                                     : theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
-                            if (player.artist.isNotEmpty) ...[
+                            if (playerData.artist.isNotEmpty) ...[
                               const SizedBox(height: 4.0),
                               Text(
-                                player.artist,
+                                playerData.artist,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -126,7 +162,9 @@ class _MiniplayerBarState extends State<MiniplayerBar> {
                       ),
                       const SizedBox(width: 8.0),
                       GestureDetector(
-                        onTap: hasTrack ? player.playPause : null,
+                        onTap: hasTrack
+                            ? context.read<PlayerController>().playPause
+                            : null,
                         child: Container(
                           width: 40.0,
                           height: 40.0,
@@ -146,7 +184,7 @@ class _MiniplayerBarState extends State<MiniplayerBar> {
                                 : null,
                           ),
                           child: Icon(
-                            player.isPlaying ? Broken.pause : Broken.play,
+                            playerData.isPlaying ? Broken.pause : Broken.play,
                             size: 22.0,
                             color: hasTrack
                                 ? Colors.white.withOpacityExt(0.7)
@@ -165,12 +203,8 @@ class _MiniplayerBarState extends State<MiniplayerBar> {
     );
   }
 
-  Widget _buildArtwork(
-    BuildContext context,
-    PlayerController player,
-    ThemeData theme,
-  ) {
-    final track = player.currentTrack;
+  Widget _buildArtwork(BuildContext context, ThemeData theme, int? trackId) {
+    final track = context.read<PlayerController>().currentTrack;
     if (track == null) {
       return SizedBox(
         width: 58.0,

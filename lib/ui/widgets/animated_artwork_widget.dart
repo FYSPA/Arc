@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:video_player/video_player.dart';
 import 'package:arx_canvas/arx_canvas.dart';
 
@@ -8,6 +9,8 @@ import '../../core/broken_icons.dart';
 import '../../data/models/track.dart';
 import '../../services/animated_artwork_service.dart';
 import '../../services/artwork_service.dart' as local;
+
+import '../../core/utils.dart';
 
 class AnimatedArtworkWidget extends StatefulWidget {
   final ArcTrack track;
@@ -45,7 +48,11 @@ class _AnimatedArtworkWidgetState extends State<AnimatedArtworkWidget> {
   @override
   void initState() {
     super.initState();
-    _loadArtwork();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 50), () {
+        if (!_disposed && mounted) _loadArtwork();
+      });
+    });
   }
 
   @override
@@ -71,10 +78,11 @@ class _AnimatedArtworkWidgetState extends State<AnimatedArtworkWidget> {
   void _disposeController() {
     final c = _controller;
     _controller = null;
-    if (c != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        c.dispose();
-      });
+    _videoReady = false;
+    try {
+      c?.dispose();
+    } catch (e) {
+      logD('[AnimatedArtwork] dispose error: $e');
     }
   }
 
@@ -82,7 +90,7 @@ class _AnimatedArtworkWidgetState extends State<AnimatedArtworkWidget> {
     final key = widget.track.filePath ?? '${widget.track.id}';
     if (_currentTrackKey == key) return;
     _currentTrackKey = key;
-    debugPrint(
+    logD(
       '[AnimatedArtwork] _loadArtwork for ${widget.track.title} (${widget.track.artist}) key=$key',
     );
 
@@ -93,49 +101,49 @@ class _AnimatedArtworkWidgetState extends State<AnimatedArtworkWidget> {
     if (mounted) setState(() {});
 
     try {
-      // Check ImageProvider cache first (instant, from miniplayer)
-      final cached = local.ArtworkService.inst.getCachedImageProvider(
-        widget.track.id,
+      // Show the cached LOCAL high-res artwork immediately as the static
+      // frame. Don't reuse the miniplayer's low-res thumbnail cache, and don't
+      // fetch online for art that already exists locally (no baja→alta flash).
+      final localBytes = await local.ArtworkService.inst.getLocalArtwork(
+        widget.track,
       );
-      if (cached != null) {
-        _staticImage = cached;
-        debugPrint('[AnimatedArtwork] static artwork from ImageProvider cache');
+      if (_disposed || !mounted || _currentTrackKey != key) return;
+      if (localBytes != null && localBytes.isNotEmpty) {
+        _staticImage = MemoryImage(localBytes);
+        logD('[AnimatedArtwork] static artwork from local cache');
+        setState(() {});
+      } else {
+        // Local art missing: fill from online in the background (no flash).
+        local.ArtworkService.inst.getTrackArtwork(widget.track).then((online) {
+          if (_disposed || !mounted || _currentTrackKey != key) return;
+          if (online != null && online.isNotEmpty) {
+            _staticImage = MemoryImage(online);
+            logD('[AnimatedArtwork] static artwork filled from online');
+            setState(() {});
+          }
+        });
       }
 
-      // Run both fetches in parallel (for cache miss or fallback)
-      final localFuture = cached == null
-          ? local.ArtworkService.inst.getLocalArtwork(widget.track)
-          : Future.value(null);
-      final animatedFuture = AnimatedArtworkService.inst.fetchForTrack(
+      // Animated artwork — runs independently, takes seconds
+      final artwork = await AnimatedArtworkService.inst.fetchForTrack(
         widget.track,
         null,
       );
 
-      // Animated artwork first — it's what matters for the visual
-      final artwork = await animatedFuture;
-
       if (_disposed || !mounted || _currentTrackKey != key) return;
 
       _artwork = artwork;
-      debugPrint(
+      logD(
         '[AnimatedArtwork] animated result: ${artwork != null ? "hasAnimation=${artwork.hasAnimation}, url=${artwork.preferredAnimationUrl}" : "NULL"}',
       );
 
-      // Static artwork as fallback (from MediaStore only, fast)
-      final bytes = await localFuture;
-      if (bytes != null && bytes.isNotEmpty) {
-        _staticImage = MemoryImage(bytes);
-      }
-
       // Fallback: use staticImageUrl from animated artwork if MediaStore has no artwork
       if (_staticImage == null && artwork?.staticImageUrl != null) {
-        debugPrint('[AnimatedArtwork] using staticImageUrl fallback');
+        logD('[AnimatedArtwork] using staticImageUrl fallback');
         _staticImage = NetworkImage(artwork!.staticImageUrl!);
       }
 
-      debugPrint(
-        '[AnimatedArtwork] static artwork loaded: ${_staticImage != null}',
-      );
+      logD('[AnimatedArtwork] static artwork loaded: ${_staticImage != null}');
 
       if (mounted) setState(() {});
 
@@ -148,14 +156,14 @@ class _AnimatedArtworkWidgetState extends State<AnimatedArtworkWidget> {
       }
     } catch (e) {
       if (_disposed || !mounted || _currentTrackKey != key) return;
-      debugPrint('[AnimatedArtwork] _loadArtwork error: $e');
+      logD('[AnimatedArtwork] _loadArtwork error: $e');
       if (mounted) setState(() {});
     }
   }
 
   Future<void> _openMedia(String url, String expectedKey) async {
     try {
-      debugPrint('[AnimatedArtwork] _openMedia: $url');
+      logD('[AnimatedArtwork] _openMedia: $url');
 
       final controller = VideoPlayerController.networkUrl(
         Uri.parse(url),
@@ -182,18 +190,18 @@ class _AnimatedArtworkWidgetState extends State<AnimatedArtworkWidget> {
         controller.play();
       }
 
-      debugPrint(
+      logD(
         '[AnimatedArtwork] initialized: ${controller.value.size.width}x${controller.value.size.height}',
       );
 
       // Video is ready - start crossfade to animated
       if (!_disposed && mounted) {
-        debugPrint('[AnimatedArtwork] video ready, crossfading to animated');
+        logD('[AnimatedArtwork] video ready, crossfading to animated');
         _videoReady = true;
         setState(() {});
       }
     } catch (e) {
-      debugPrint('[AnimatedArtwork] _openMedia error: $e');
+      logD('[AnimatedArtwork] _openMedia error: $e');
       if (_disposed || !mounted || _currentTrackKey != expectedKey) return;
       if (mounted) setState(() {});
     }
@@ -202,6 +210,7 @@ class _AnimatedArtworkWidgetState extends State<AnimatedArtworkWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasVideo = _controller != null && _controller!.value.isInitialized;
 
     return SizedBox.expand(
       child: ClipRRect(
@@ -209,7 +218,7 @@ class _AnimatedArtworkWidgetState extends State<AnimatedArtworkWidget> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (_controller != null && _controller!.value.isInitialized)
+            if (hasVideo)
               Positioned.fill(
                 child: FittedBox(
                   fit: BoxFit.cover,
@@ -220,14 +229,8 @@ class _AnimatedArtworkWidgetState extends State<AnimatedArtworkWidget> {
                   ),
                 ),
               ),
-            Positioned.fill(
-              child: AnimatedOpacity(
-                opacity: _videoReady ? 0.0 : 1.0,
-                duration: const Duration(milliseconds: 1200),
-                curve: Curves.easeInOut,
-                child: _buildStaticArtwork(theme),
-              ),
-            ),
+            if (!_videoReady)
+              Positioned.fill(child: _buildStaticArtwork(theme)),
           ],
         ),
       ),
@@ -236,7 +239,11 @@ class _AnimatedArtworkWidgetState extends State<AnimatedArtworkWidget> {
 
   Widget _buildStaticArtwork(ThemeData theme) {
     if (_staticImage != null) {
-      return Image(image: _staticImage!, fit: BoxFit.cover);
+      return Image(
+        image: _staticImage!,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+      );
     }
     return Container(
       color: theme.cardColor,

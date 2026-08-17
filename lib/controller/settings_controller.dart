@@ -1,10 +1,39 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../controller/indexer_controller.dart';
 import '../core/constans.dart';
 import '../core/enums.dart';
 
 enum PerformanceMode { off, powerSaving, limit80 }
+
+enum ArtworkQuality { low, medium, high }
+
+extension ArtworkQualityX on ArtworkQuality {
+  int get listDecodeSize {
+    switch (this) {
+      case ArtworkQuality.low:
+        return 80;
+      case ArtworkQuality.medium:
+        return 150;
+      case ArtworkQuality.high:
+        return 300;
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case ArtworkQuality.low:
+        return 'Baja';
+      case ArtworkQuality.medium:
+        return 'Media';
+      case ArtworkQuality.high:
+        return 'Alta';
+    }
+  }
+}
 
 class SettingsController extends ChangeNotifier {
   SettingsController._();
@@ -75,6 +104,9 @@ class SettingsController extends ChangeNotifier {
   double _artworkSize = 280.0;
   double get artworkSize => _artworkSize;
 
+  ArtworkQuality _artworkQuality = ArtworkQuality.medium;
+  ArtworkQuality get artworkQuality => _artworkQuality;
+
   Set<GlowPosition> _amoledGlowPositions = {GlowPosition.topRight};
   Set<GlowPosition> get amoledGlowPositions =>
       Set.unmodifiable(_amoledGlowPositions);
@@ -119,7 +151,8 @@ class SettingsController extends ChangeNotifier {
     _isOnboarded = _prefs.getBool('is_onboarded') ?? false;
 
     final themeIndex = _prefs.getInt('theme_mode') ?? 0;
-    _themeMode = ThemeMode.values[themeIndex];
+    _themeMode =
+        ThemeMode.values.elementAtOrNull(themeIndex) ?? ThemeMode.system;
 
     _languageCode = _prefs.getString('language_code') ?? 'es';
 
@@ -136,7 +169,9 @@ class SettingsController extends ChangeNotifier {
     _foldersToExclude.addAll(_prefs.getStringList('folders_to_exclude') ?? []);
 
     final perfIndex = _prefs.getInt('performance_mode') ?? 0;
-    _performanceMode = PerformanceMode.values[perfIndex];
+    _performanceMode =
+        PerformanceMode.values.elementAtOrNull(perfIndex) ??
+        PerformanceMode.off;
 
     _libraryTabs =
         _prefs.getStringList('library_tabs') ??
@@ -159,10 +194,20 @@ class SettingsController extends ChangeNotifier {
 
     _artworkSize = _prefs.getDouble('artwork_size') ?? 280.0;
 
+    final qualityIndex = _prefs.getInt('artwork_quality');
+    _artworkQuality =
+        ArtworkQuality.values.elementAtOrNull(qualityIndex ?? 1) ??
+        ArtworkQuality.medium;
+
     final glowPosStrings = _prefs.getStringList('amoled_glow_positions');
     if (glowPosStrings != null) {
       _amoledGlowPositions = glowPosStrings
-          .map((s) => GlowPosition.values.firstWhere((e) => e.name == s))
+          .map(
+            (s) => GlowPosition.values.firstWhere(
+              (e) => e.name == s,
+              orElse: () => GlowPosition.topRight,
+            ),
+          )
           .toSet();
     }
 
@@ -202,6 +247,7 @@ class SettingsController extends ChangeNotifier {
     _prefs.setBool('enable_amoled_glow', _enableAmoledGlow);
     _prefs.setBool('enable_animated_artwork', _enableAnimatedArtwork);
     _prefs.setDouble('artwork_size', _artworkSize);
+    _prefs.setInt('artwork_quality', _artworkQuality.index);
     _prefs.setStringList(
       'amoled_glow_positions',
       _amoledGlowPositions.map((e) => e.name).toList(),
@@ -262,12 +308,26 @@ class SettingsController extends ChangeNotifier {
     _foldersToScan.remove(path);
     notifyListeners();
     _save();
+    _scheduleRescan();
   }
 
   void setFoldersToScan(List<String> paths) {
     _foldersToScan = List.from(paths);
     notifyListeners();
     _save();
+    _scheduleRescan();
+  }
+
+  /// Re-scan the library (debounced) when the folder selection changes, so the
+  /// user sees the effect immediately in Settings without reinstalling. Skipped
+  /// during onboarding, where `_completeOnboarding` owns the initial scan.
+  Timer? _rescanTimer;
+  void _scheduleRescan() {
+    if (!_isOnboarded) return;
+    _rescanTimer?.cancel();
+    _rescanTimer = Timer(const Duration(milliseconds: 600), () {
+      IndexerController.inst.scanDevice();
+    });
   }
 
   void addFolderToExclude(String path) {
@@ -345,6 +405,12 @@ class SettingsController extends ChangeNotifier {
 
   void setArtworkSize(double value) {
     _artworkSize = value;
+    notifyListeners();
+    _save();
+  }
+
+  void setArtworkQuality(ArtworkQuality quality) {
+    _artworkQuality = quality;
     notifyListeners();
     _save();
   }

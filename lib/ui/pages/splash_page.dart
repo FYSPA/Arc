@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../controller/indexer_controller.dart';
 import '../../controller/player_controller.dart';
 import '../../controller/settings_controller.dart';
+import '../../core/utils.dart';
 import 'main_page.dart';
 import 'onboarding_page.dart';
 
@@ -45,14 +46,21 @@ class _SplashPageState extends State<SplashPage>
   }
 
   Future<void> _preloadData() async {
-    final indexer = IndexerController.inst;
-    final hasPermission = await indexer.checkPermission();
-    if (hasPermission) {
-      indexer.scanDevice();
+    try {
+      final indexer = IndexerController.inst;
+      final hasPermission = await indexer.checkPermission();
+      // Only auto-scan on relaunch (already onboarded). On a fresh install the
+      // scan must wait until the user finishes onboarding and chooses folders,
+      // otherwise it would index everything with the empty default selection.
+      if (hasPermission && SettingsController.inst.isOnboarded) {
+        indexer.scanDevice();
+      }
+      PlayerController.inst.initMediaSessionCommands();
+      await PlayerController.inst.restorePlaybackState();
+    } catch (e, st) {
+      logE('[ARC] splash preload failed: $e', st);
     }
-    PlayerController.inst.initMediaSessionCommands();
-    await PlayerController.inst.restorePlaybackState();
-    _dataReady = true;
+    if (mounted) setState(() => _dataReady = true);
   }
 
   void _finishSplash() {

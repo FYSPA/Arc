@@ -43,6 +43,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   void _completeOnboarding(SettingsController settings) {
     settings.completeOnboarding();
+    IndexerController.inst.scanDevice();
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(

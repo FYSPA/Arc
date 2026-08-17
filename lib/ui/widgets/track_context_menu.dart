@@ -5,7 +5,8 @@ import '../../core/extensions.dart';
 import '../../controller/player_controller.dart';
 import '../../data/models/track.dart';
 import '../../services/artwork_service.dart';
-import '../../services/media_store_service.dart';
+import '../../controller/settings_controller.dart';
+import 'artwork.dart';
 
 class TrackContextMenu {
   TrackContextMenu._();
@@ -311,10 +312,12 @@ class _ContextMenuArtworkState extends State<_ContextMenuArtwork> {
   @override
   void initState() {
     super.initState();
-    final albumId = widget.track.albumId;
-    _future = albumId != null
-        ? ArtworkService.inst.getArtwork(albumId, MediaType.album)
-        : Future.value(null);
+    final track = widget.track;
+    _future = ArtworkService.inst.getHighResAlbumArt(
+      track.album,
+      track.artist,
+      id: track.albumId,
+    );
   }
 
   @override
@@ -325,8 +328,11 @@ class _ContextMenuArtworkState extends State<_ContextMenuArtwork> {
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.hasData && snapshot.data != null) {
-          return Image.memory(
-            snapshot.data!,
+          return Image(
+            image: resizeMemoryArtwork(
+              snapshot.data!,
+              SettingsController.inst.artworkQuality.listDecodeSize,
+            ),
             fit: BoxFit.cover,
             gaplessPlayback: true,
           );

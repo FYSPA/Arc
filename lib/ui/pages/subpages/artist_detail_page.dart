@@ -12,6 +12,7 @@ import '../../../data/models/track.dart';
 import '../../../services/artwork_service.dart';
 import '../../../services/artist_photo_service.dart';
 import '../../../services/media_store_service.dart';
+import '../../widgets/artwork.dart';
 import '../../widgets/track_context_menu.dart';
 
 class ArtistDetailPage extends StatelessWidget {
@@ -142,7 +143,7 @@ class _ArtistTrackTile extends StatelessWidget {
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
-        track.album,
+        track.artist,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
@@ -213,11 +214,15 @@ class _ArtistArtworkHeaderState extends State<_ArtistArtworkHeader> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (_bytes != null) {
-      return Image.memory(_bytes!, fit: BoxFit.cover, gaplessPlayback: true);
+      return Image(
+        image: resizeMemoryArtwork(_bytes!, 560),
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+      );
     }
     if (_networkUrl != null) {
-      return Image.network(
-        _networkUrl!,
+      return Image(
+        image: resizeNetworkArtwork(_networkUrl!, 560),
         fit: BoxFit.cover,
         gaplessPlayback: true,
         errorBuilder: (_, _, _) => _buildPlaceholder(theme),

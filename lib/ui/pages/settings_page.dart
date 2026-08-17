@@ -211,14 +211,39 @@ class SettingsPage extends StatelessWidget {
                   title: 'Artwork Size',
                   subtitle: '${settings.artworkSize.round()}px',
                   trailing: SizedBox(
-                    width: 120.0,
+                    width: 180.0,
                     child: Slider(
                       value: settings.artworkSize,
-                      min: 200.0,
-                      max: 340.0,
+                      min: 280.0,
+                      max: 460.0,
                       divisions: 14,
                       onChanged: settings.setArtworkSize,
                     ),
+                  ),
+                ),
+                SettingsTile(
+                  icon: Broken.image,
+                  title: 'Calidad de carátula',
+                  subtitle: 'Resolución en listas (player usa alta siempre)',
+                  trailing: SegmentedButton<ArtworkQuality>(
+                    selected: {settings.artworkQuality},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (selection) =>
+                        settings.setArtworkQuality(selection.first),
+                    segments: const [
+                      ButtonSegment(
+                        value: ArtworkQuality.low,
+                        label: Text('Baja'),
+                      ),
+                      ButtonSegment(
+                        value: ArtworkQuality.medium,
+                        label: Text('Media'),
+                      ),
+                      ButtonSegment(
+                        value: ArtworkQuality.high,
+                        label: Text('Alta'),
+                      ),
+                    ],
                   ),
                 ),
                 SettingsTile(

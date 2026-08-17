@@ -1,15 +1,17 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controller/indexer_controller.dart';
 import '../../controller/player_controller.dart';
+import '../../controller/settings_controller.dart';
 import '../../core/broken_icons.dart';
 import '../../core/dimensions.dart';
 import '../../core/extensions.dart';
 import '../../data/models/track.dart';
+
+import '../../core/utils.dart';
 import '../../services/artwork_service.dart';
 import '../widgets/track_context_menu.dart';
 
@@ -60,7 +62,7 @@ class _TracksPageState extends State<TracksPage> {
     }).toList();
     sw.stop();
     if (sw.elapsedMilliseconds > 5) {
-      debugPrint(
+      logD(
         '[ARC] _filteredTracks: ${sw.elapsedMilliseconds}ms '
         '(${_cachedFilteredTracks!.length} results)',
       );
@@ -157,7 +159,7 @@ class _TracksPageState extends State<TracksPage> {
     final tracks = _filteredTracks(indexer);
     sw.stop();
     if (sw.elapsedMilliseconds > 16) {
-      debugPrint(
+      logD(
         '[ARC] TracksPage build: ${sw.elapsedMilliseconds}ms '
         '(tracks=${tracks.length}, query="$_searchQuery")',
       );
@@ -190,6 +192,7 @@ class _TracksPageState extends State<TracksPage> {
                   padding: const EdgeInsets.only(
                     bottom: kBottomPaddingMiniplayer,
                   ),
+                  itemExtent: 72.0,
                   itemCount: tracks.length + (indexer.hasMoreTracks ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == tracks.length) {
@@ -475,7 +478,7 @@ class _ArtworkWidget extends StatefulWidget {
 }
 
 class _ArtworkWidgetState extends State<_ArtworkWidget> {
-  Uint8List? _cachedBytes;
+  ImageProvider? _cachedImage;
   bool _disposed = false;
 
   @override
@@ -488,7 +491,7 @@ class _ArtworkWidgetState extends State<_ArtworkWidget> {
   void didUpdateWidget(covariant _ArtworkWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.track.id != widget.track.id) {
-      _cachedBytes = null;
+      _cachedImage = null;
       _loadArtwork();
     }
   }
@@ -501,16 +504,21 @@ class _ArtworkWidgetState extends State<_ArtworkWidget> {
 
   Future<void> _loadArtwork() async {
     final sw = Stopwatch()..start();
-    final bytes = await ArtworkService.inst.getTrackArtwork(widget.track);
+    final size = SettingsController.inst.artworkQuality.listDecodeSize;
+    final image = await ArtworkService.inst.getArtworkProvider(
+      widget.track,
+      size,
+      onlineFallback: true,
+    );
     sw.stop();
     if (sw.elapsedMilliseconds > 50) {
-      debugPrint(
+      logD(
         '[ARC] artwork slow load: ${sw.elapsedMilliseconds}ms for id=${widget.track.id}',
       );
     }
     if (!_disposed && mounted) {
       setState(() {
-        _cachedBytes = bytes;
+        _cachedImage = image;
       });
     }
   }
@@ -519,9 +527,9 @@ class _ArtworkWidgetState extends State<_ArtworkWidget> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    if (_cachedBytes != null) {
-      return Image.memory(
-        _cachedBytes!,
+    if (_cachedImage != null) {
+      return Image(
+        image: _cachedImage!,
         fit: BoxFit.cover,
         gaplessPlayback: true,
       );

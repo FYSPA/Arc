@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/models/track.dart';
 
+import '../core/utils.dart';
+
 enum ArcRepeatMode { off, all, one }
 
 class PlayerController extends ChangeNotifier {
@@ -29,6 +31,11 @@ class PlayerController extends ChangeNotifier {
 
   DateTime _lastPlayCall = DateTime.fromMillisecondsSinceEpoch(0);
   DateTime _lastSaveTime = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime _lastNotifyTime = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime _lastNotifyLogTime = DateTime.fromMillisecondsSinceEpoch(0);
+  int _notifyCount = 0;
+  int _consecutiveSkips = 0;
+  static const _maxConsecutiveSkips = 5;
   bool _isRestoring = false;
   bool _streamsInitialized = false;
   StreamSubscription<PlaybackState>? _stateSub;
@@ -36,6 +43,7 @@ class PlayerController extends ChangeNotifier {
   StreamSubscription<String>? _nameSub;
   StreamSubscription<String>? _abortSub;
   StreamSubscription<FlacMetadataData?>? _metaSub;
+  StreamSubscription<MediaCommand>? _commandSub;
 
   ArcTrack? get currentTrack => _currentTrack;
   bool get isPlaying => _isPlaying;
@@ -48,6 +56,20 @@ class PlayerController extends ChangeNotifier {
   int get queueIndex => _queueIndex;
   bool get hasTrack => _currentTrack != null;
   bool get hasQueue => _queue.isNotEmpty;
+
+  @override
+  void notifyListeners() {
+    _notifyCount++;
+    final now = DateTime.now();
+    if (now.difference(_lastNotifyLogTime).inSeconds >= 3) {
+      logD(
+        '[PERF] PlayerController.notifyListeners — $_notifyCount calls in last ${now.difference(_lastNotifyLogTime).inSeconds}s',
+      );
+      _notifyCount = 0;
+      _lastNotifyLogTime = now;
+    }
+    super.notifyListeners();
+  }
 
   String get title {
     if (_metadata != null && _metadata!.title.isNotEmpty) {
@@ -87,7 +109,11 @@ class PlayerController extends ChangeNotifier {
 
     _posSub = _player.onPositionChanged.listen((pos) {
       _position = pos;
-      notifyListeners();
+      final now = DateTime.now();
+      if (now.difference(_lastNotifyTime).inMilliseconds >= 500) {
+        _lastNotifyTime = now;
+        notifyListeners();
+      }
       if (!_isRestoring &&
           _currentTrack != null &&
           DateTime.now().difference(_lastSaveTime).inSeconds >= 5) {
@@ -134,13 +160,27 @@ class PlayerController extends ChangeNotifier {
   }
 
   void _onGaplessAborted(String failedName) {
-    debugPrint('[ARC] gapless aborted: $failedName');
+    logD('[ARC] gapless aborted: $failedName');
     _skipToNextOnFailure();
   }
 
   void _skipToNextOnFailure() {
+    _consecutiveSkips++;
+    if (_consecutiveSkips > _maxConsecutiveSkips) {
+      logD('[ARC] too many consecutive skips ($_consecutiveSkips), stopping');
+      _isPlaying = false;
+      _position = Duration.zero;
+      _duration = Duration.zero;
+      _metadata = null;
+      _currentTrack = null;
+      _consecutiveSkips = 0;
+      notifyListeners();
+      return;
+    }
+
     if (_queue.isEmpty) {
       _isPlaying = false;
+      _consecutiveSkips = 0;
       notifyListeners();
       return;
     }
@@ -149,7 +189,9 @@ class PlayerController extends ChangeNotifier {
     if (nextIndex < _queue.length) {
       final next = _queue[nextIndex];
       if (next.filePath != null && File(next.filePath!).existsSync()) {
-        debugPrint('[ARC] skipping failed track, playing: ${next.title}');
+        logD(
+          '[ARC] skipping failed track (#$_consecutiveSkips), playing: ${next.title}',
+        );
         playTrack(next, index: nextIndex);
       } else {
         _queueIndex = nextIndex;
@@ -158,7 +200,7 @@ class PlayerController extends ChangeNotifier {
     } else if (_repeatMode == ArcRepeatMode.all) {
       final first = _queue.first;
       if (first.filePath != null && File(first.filePath!).existsSync()) {
-        debugPrint('[ARC] skipping failed track, looping to: ${first.title}');
+        logD('[ARC] skipping failed track, looping to: ${first.title}');
         playTrack(first, index: 0);
       } else {
         _isPlaying = false;
@@ -166,6 +208,7 @@ class PlayerController extends ChangeNotifier {
         _duration = Duration.zero;
         _metadata = null;
         _currentTrack = null;
+        _consecutiveSkips = 0;
         notifyListeners();
       }
     } else {
@@ -174,6 +217,7 @@ class PlayerController extends ChangeNotifier {
       _duration = Duration.zero;
       _metadata = null;
       _currentTrack = null;
+      _consecutiveSkips = 0;
       notifyListeners();
     }
   }
@@ -219,13 +263,13 @@ class PlayerController extends ChangeNotifier {
     _ensureStreams();
 
     if (track.filePath == null || track.filePath!.isEmpty) {
-      debugPrint('[ARC] track has no filePath: ${track.title}');
+      logD('[ARC] track has no filePath: ${track.title}');
       _skipToNextOnFailure();
       return;
     }
 
     if (!File(track.filePath!).existsSync()) {
-      debugPrint('[ARC] file not found on disk: ${track.filePath}');
+      logD('[ARC] file not found on disk: ${track.filePath}');
       _skipToNextOnFailure();
       return;
     }
@@ -247,6 +291,7 @@ class PlayerController extends ChangeNotifier {
     _lastPlayCall = DateTime.now();
     final result = _player.play(track.filePath!);
     if (result == 0) {
+      _consecutiveSkips = 0;
       _duration = _player.duration;
       if (_duration.inMilliseconds <= 0 &&
           track.duration != null &&
@@ -257,7 +302,7 @@ class PlayerController extends ChangeNotifier {
       _isPlaying = true;
       _queueNext();
     } else {
-      debugPrint('[ARC] play() failed for: ${track.title} (${track.filePath})');
+      logD('[ARC] play() failed for: ${track.title} (${track.filePath})');
       _isPlaying = false;
       _skipToNextOnFailure();
       return;
@@ -444,24 +489,9 @@ class PlayerController extends ChangeNotifier {
   Future<void> _savePlaybackState() async {
     if (_currentTrack == null) return;
     try {
-      debugPrint(
+      logD(
         '[ARC] saving state: ${_currentTrack!.title} @ ${_position.inMilliseconds}ms',
       );
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('pb_track_id', _currentTrack!.id);
-      await prefs.setString('pb_file_path', _currentTrack!.filePath ?? '');
-      await prefs.setString('pb_title', _currentTrack!.title);
-      await prefs.setString('pb_artist', _currentTrack!.artist);
-      await prefs.setString('pb_album', _currentTrack!.album);
-      await prefs.setInt('pb_duration_ms', _currentTrack!.duration ?? 0);
-      await prefs.setInt('pb_file_size', _currentTrack!.fileSize ?? 0);
-      await prefs.setInt('pb_album_id', _currentTrack!.albumId ?? 0);
-      await prefs.setString('pb_genre', _currentTrack!.genre ?? '');
-      await prefs.setInt('pb_track_number', _currentTrack!.track ?? 0);
-      await prefs.setInt('pb_position_ms', _position.inMilliseconds);
-      await prefs.setInt('pb_queue_index', _queueIndex);
-      await prefs.setInt('pb_repeat_mode', _repeatMode.index);
-
       final queueJson = _queue
           .map(
             (t) => {
@@ -478,60 +508,75 @@ class PlayerController extends ChangeNotifier {
             },
           )
           .toList();
-      await prefs.setString('pb_queue', jsonEncode(queueJson));
+      final state = {
+        'track_id': _currentTrack!.id,
+        'file_path': _currentTrack!.filePath ?? '',
+        'title': _currentTrack!.title,
+        'artist': _currentTrack!.artist,
+        'album': _currentTrack!.album,
+        'duration_ms': _currentTrack!.duration ?? 0,
+        'file_size': _currentTrack!.fileSize ?? 0,
+        'album_id': _currentTrack!.albumId ?? 0,
+        'genre': _currentTrack!.genre ?? '',
+        'track_number': _currentTrack!.track ?? 0,
+        'position_ms': _position.inMilliseconds,
+        'queue_index': _queueIndex,
+        'repeat_mode': _repeatMode.index,
+        'queue': queueJson,
+      };
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('pb_state', jsonEncode(state));
     } catch (e) {
-      debugPrint('[ARC] _savePlaybackState failed: $e');
+      logD('[ARC] _savePlaybackState failed: $e');
     }
   }
 
   void _clearPlaybackState() {
     SharedPreferences.getInstance().then((prefs) {
-      prefs.remove('pb_track_id');
-      prefs.remove('pb_file_path');
-      prefs.remove('pb_title');
-      prefs.remove('pb_artist');
-      prefs.remove('pb_album');
-      prefs.remove('pb_duration_ms');
-      prefs.remove('pb_file_size');
-      prefs.remove('pb_album_id');
-      prefs.remove('pb_genre');
-      prefs.remove('pb_track_number');
-      prefs.remove('pb_position_ms');
-      prefs.remove('pb_queue_index');
-      prefs.remove('pb_repeat_mode');
-      prefs.remove('pb_queue');
+      prefs.remove('pb_state');
     });
   }
 
   Future<bool> restorePlaybackState() async {
+    final sw = Stopwatch()..start();
     _isRestoring = true;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final filePath = prefs.getString('pb_file_path');
-      if (filePath == null || filePath.isEmpty) {
+      final stateJson = prefs.getString('pb_state');
+      if (stateJson == null || stateJson.isEmpty) {
         _isRestoring = false;
+        sw.stop();
+        logD(
+          '[PERF] restorePlaybackState: no saved state (${sw.elapsedMilliseconds}ms)',
+        );
         return false;
       }
-      if (!File(filePath).existsSync()) {
+      final state = jsonDecode(stateJson) as Map<String, dynamic>;
+      final filePath = state['file_path'] as String? ?? '';
+      if (filePath.isEmpty || !File(filePath).existsSync()) {
         _clearPlaybackState();
         _isRestoring = false;
+        sw.stop();
+        logD(
+          '[PERF] restorePlaybackState: file missing (${sw.elapsedMilliseconds}ms)',
+        );
         return false;
       }
 
-      final trackId = prefs.getInt('pb_track_id') ?? 0;
-      final title = prefs.getString('pb_title') ?? 'Unknown';
-      final artist = prefs.getString('pb_artist') ?? 'Unknown Artist';
-      final album = prefs.getString('pb_album') ?? 'Unknown Album';
-      final duration = prefs.getInt('pb_duration_ms');
-      final fileSize = prefs.getInt('pb_file_size');
-      final albumId = prefs.getInt('pb_album_id');
-      final genre = prefs.getString('pb_genre');
-      final trackNumber = prefs.getInt('pb_track_number');
-      final positionMs = prefs.getInt('pb_position_ms') ?? 0;
-      final queueIndex = prefs.getInt('pb_queue_index') ?? 0;
-      final repeatIndex = prefs.getInt('pb_repeat_mode') ?? 0;
+      final trackId = state['track_id'] as int? ?? 0;
+      final title = state['title'] as String? ?? 'Unknown';
+      final artist = state['artist'] as String? ?? 'Unknown Artist';
+      final album = state['album'] as String? ?? 'Unknown Album';
+      final duration = state['duration_ms'] as int?;
+      final fileSize = state['file_size'] as int?;
+      final albumId = state['album_id'] as int?;
+      final genre = state['genre'] as String?;
+      final trackNumber = state['track_number'] as int?;
+      final positionMs = state['position_ms'] as int? ?? 0;
+      final queueIndex = state['queue_index'] as int? ?? 0;
+      final repeatIndex = state['repeat_mode'] as int? ?? 0;
 
-      debugPrint('[ARC] restoring: $title @ ${positionMs}ms');
+      logD('[ARC] restoring: $title @ ${positionMs}ms');
 
       final track = ArcTrack(
         id: trackId,
@@ -547,14 +592,21 @@ class PlayerController extends ChangeNotifier {
       );
 
       List<ArcTrack> queue = [track];
-      final queueJson = prefs.getString('pb_queue');
-      if (queueJson != null && queueJson.isNotEmpty) {
-        final list = jsonDecode(queueJson) as List;
-        final restored = list
+      final queueList = state['queue'] as List?;
+      if (queueList != null && queueList.isNotEmpty) {
+        final restored = queueList
             .map((m) {
               final map = Map<String, dynamic>.from(m as Map);
               final path = map['filePath'] as String? ?? '';
               if (path.isEmpty || !File(path).existsSync()) return null;
+              final fileName = path.split('/').last;
+              if (fileName.isEmpty ||
+                  !fileName[0].contains(RegExp(r'[a-zA-Z0-9\u00C0-\u024F]'))) {
+                return null;
+              }
+              final f = File(path);
+              final size = f.existsSync() ? f.lengthSync() : 0;
+              if (size < 1024) return null;
               return ArcTrack.fromMap(map);
             })
             .whereType<ArcTrack>()
@@ -563,6 +615,18 @@ class PlayerController extends ChangeNotifier {
       }
 
       final safeIndex = queueIndex.clamp(0, queue.length - 1);
+
+      final curFile = File(filePath);
+      final curSize = curFile.existsSync() ? curFile.lengthSync() : 0;
+      if (curSize < 1024) {
+        _clearPlaybackState();
+        _isRestoring = false;
+        sw.stop();
+        logD(
+          '[PERF] restorePlaybackState: current track too small (${sw.elapsedMilliseconds}ms)',
+        );
+        return false;
+      }
 
       _ensureStreams();
       _lastPlayCall = DateTime.now();
@@ -575,10 +639,22 @@ class PlayerController extends ChangeNotifier {
           .values[repeatIndex.clamp(0, ArcRepeatMode.values.length - 1)];
       _metadata = null;
 
+      final playSw = Stopwatch()..start();
       final result = _player.play(filePath);
+      playSw.stop();
+      logD(
+        '[PERF] restorePlaybackState _player.play(): ${playSw.elapsedMilliseconds}ms',
+      );
+
       if (result == 0) {
+        final seekSw = Stopwatch()..start();
         _player.pause();
         _player.seek(_position);
+        seekSw.stop();
+        logD(
+          '[PERF] restorePlaybackState pause+seek: ${seekSw.elapsedMilliseconds}ms',
+        );
+
         _duration = _player.duration;
         if (_duration.inMilliseconds <= 0 && duration != null && duration > 0) {
           _duration = Duration(milliseconds: duration);
@@ -586,7 +662,10 @@ class PlayerController extends ChangeNotifier {
         _isPlaying = false;
         _queueNext();
         _isRestoring = false;
-        debugPrint('[ARC] restore OK: pos=${_position.inMilliseconds}ms');
+        sw.stop();
+        logD(
+          '[PERF] restorePlaybackState TOTAL: ${sw.elapsedMilliseconds}ms — pos=${_position.inMilliseconds}ms',
+        );
         notifyListeners();
         return true;
       }
@@ -595,46 +674,49 @@ class PlayerController extends ChangeNotifier {
       _queue = [];
       _queueIndex = -1;
       _isRestoring = false;
+      sw.stop();
+      logD(
+        '[PERF] restorePlaybackState: play() failed (${sw.elapsedMilliseconds}ms)',
+      );
       return false;
     } catch (e) {
-      debugPrint('[ARC] restorePlaybackState failed: $e');
+      logD('[ARC] restorePlaybackState failed: $e');
       _isRestoring = false;
+      sw.stop();
+      logD(
+        '[PERF] restorePlaybackState EXCEPTION: ${sw.elapsedMilliseconds}ms',
+      );
       return false;
     }
   }
 
-  Future<void> _updateMediaSession() async {
+  void _updateMediaSession() {
     if (_currentTrack == null) return;
-    try {
-      await MediaSession.requestPermission();
-      await MediaSession.ensureService();
-      await MediaSession.setMetadata(
-        title: title,
-        artist: artist,
-        album: album,
-        durationMs: _duration.inMilliseconds,
-      );
-      await MediaSession.setPlaybackState(
-        isPlaying: _isPlaying,
-        positionMs: _position.inMilliseconds,
-      );
-      await MediaSession.show(
-        title: title,
-        artist: artist,
-        isPlaying: _isPlaying,
-      );
-    } catch (_) {}
+    MediaSession.requestPermission().then((_) {
+      MediaSession.ensureService().then((_) {
+        MediaSession.setMetadata(
+          title: title,
+          artist: artist,
+          album: album,
+          durationMs: _duration.inMilliseconds,
+        );
+        MediaSession.setPlaybackState(
+          isPlaying: _isPlaying,
+          positionMs: _position.inMilliseconds,
+        );
+        MediaSession.show(title: title, artist: artist, isPlaying: _isPlaying);
+      });
+    });
   }
 
-  Future<void> _hideMediaSession() async {
-    try {
-      await MediaSession.hide();
-    } catch (_) {}
+  void _hideMediaSession() {
+    MediaSession.hide();
   }
 
   void initMediaSessionCommands() {
     _ensureStreams();
-    MediaSession.onCommand.listen((cmd) {
+    _commandSub?.cancel();
+    _commandSub = MediaSession.onCommand.listen((cmd) {
       switch (cmd) {
         case MediaCommandPlay():
           playPause();
@@ -665,6 +747,7 @@ class PlayerController extends ChangeNotifier {
     _nameSub?.cancel();
     _abortSub?.cancel();
     _metaSub?.cancel();
+    _commandSub?.cancel();
     super.dispose();
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../controller/indexer_controller.dart';
 import '../../controller/navigator_controller.dart';
 
 import '../../core/broken_icons.dart';
@@ -25,6 +26,21 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   static const _tabs = LibraryTab.values;
+
+  @override
+  void initState() {
+    super.initState();
+    _ensureScan();
+  }
+
+  Future<void> _ensureScan() async {
+    final indexer = IndexerController.inst;
+    if (indexer.trackList.isNotEmpty || indexer.isLoading) return;
+    final has = await indexer.checkPermission();
+    if (has && indexer.trackList.isEmpty && !indexer.isLoading) {
+      indexer.scanDevice();
+    }
+  }
 
   static const _tabIcons = <IconData>[
     Broken.home_2,

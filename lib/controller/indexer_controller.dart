@@ -3,12 +3,20 @@ import 'package:flutter/foundation.dart';
 import '../data/models/track.dart';
 import '../data/models/album.dart';
 import '../data/models/artist.dart';
-import '../services/artwork_service.dart';
 import '../services/media_store_service.dart';
 import '../services/permission_service.dart';
 import 'settings_controller.dart';
 
+import '../core/utils.dart';
+
 enum SortType { name, date, duration, artist, album }
+
+class _ArtistInfo {
+  String name;
+  int trackCount = 0;
+  final albumIds = <int?>{};
+  _ArtistInfo({required this.name});
+}
 
 class IndexerController extends ChangeNotifier {
   IndexerController._();
@@ -20,6 +28,7 @@ class IndexerController extends ChangeNotifier {
   List<ArcArtist> _artistList = [];
 
   bool _isLoading = false;
+  bool _pendingRescan = false;
   bool _hasError = false;
   String _errorMessage = '';
   SortType _currentSort = SortType.name;
@@ -56,15 +65,36 @@ class IndexerController extends ChangeNotifier {
     caseSensitive: false,
   );
 
-  static String _primaryArtist(String artist) {
-    return _normalizeName(artist.split(_collabSep).first);
+  static List<ArcArtist> _buildArtistsFromTracks(List<ArcTrack> tracks) {
+    final map = <String, _ArtistInfo>{};
+    for (final track in tracks) {
+      final names = track.artist.split(_collabSep);
+      for (final name in names) {
+        final key = _normalizeName(name);
+        if (key.isEmpty) continue;
+        map.putIfAbsent(key, () => _ArtistInfo(name: name.trim()));
+        map[key]!.trackCount++;
+        map[key]!.albumIds.add(track.albumId);
+      }
+    }
+    return map.entries
+        .map(
+          (e) => ArcArtist(
+            id: e.value.name.toLowerCase().hashCode,
+            artist: e.value.name,
+            numOfAlbums: e.value.albumIds.length,
+            numOfSongs: e.value.trackCount,
+          ),
+        )
+        .toList()
+      ..sort((a, b) => a.artist.compareTo(b.artist));
   }
 
   List<ArcTrack> getTracksByArtist(String artistName) {
-    final primary = _primaryArtist(artistName);
-    return _trackList
-        .where((t) => _primaryArtist(t.artist) == primary)
-        .toList();
+    final key = _normalizeName(artistName);
+    return _trackList.where((t) {
+      return t.artist.split(_collabSep).any((n) => _normalizeName(n) == key);
+    }).toList();
   }
 
   List<ArcTrack> getTracksByAlbum(String albumName) {
@@ -106,7 +136,7 @@ class IndexerController extends ChangeNotifier {
     _sortedTracksDirty = false;
     sw.stop();
     if (sw.elapsedMilliseconds > 5) {
-      debugPrint(
+      logD(
         '[ARC] _sortedTracks: ${sw.elapsedMilliseconds}ms '
         '(${list.length} items, sort=${_currentSort.name})',
       );
@@ -163,7 +193,13 @@ class IndexerController extends ChangeNotifier {
   }
 
   Future<void> scanDevice() async {
-    if (_isLoading) return;
+    if (_isLoading) {
+      // A newer scan was requested while one is in flight: remember it and
+      // run it once the current one finishes, so a folder-aware re-scan is
+      // never silently dropped by the _isLoading guard.
+      _pendingRescan = true;
+      return;
+    }
     _isLoading = true;
     _hasError = false;
     _errorMessage = '';
@@ -202,7 +238,7 @@ class IndexerController extends ChangeNotifier {
             .toList();
         await _loadNextChunk();
       } catch (e) {
-        debugPrint('[ARC] scanDevice: querySongs ERROR $e');
+        logD('[ARC] scanDevice: querySongs ERROR $e');
       }
 
       try {
@@ -220,26 +256,10 @@ class IndexerController extends ChangeNotifier {
         _albumList = albumByName.values.toList()
           ..sort((a, b) => a.album.compareTo(b.album));
       } catch (e) {
-        debugPrint('[ARC] scanDevice: queryAlbums ERROR $e');
+        logD('[ARC] scanDevice: queryAlbums ERROR $e');
       }
 
-      try {
-        final artistMaps = await media.queryArtists();
-        final rawArtists = artistMaps.map(ArcArtist.fromMap).toList();
-        final artistByName = <String, ArcArtist>{};
-        for (final artist in rawArtists) {
-          final key = _primaryArtist(artist.artist);
-          final existing = artistByName[key];
-          if (existing == null ||
-              (artist.numOfSongs ?? 0) > (existing.numOfSongs ?? 0)) {
-            artistByName[key] = artist;
-          }
-        }
-        _artistList = artistByName.values.toList()
-          ..sort((a, b) => a.artist.compareTo(b.artist));
-      } catch (e) {
-        debugPrint('[ARC] scanDevice: queryArtists ERROR $e');
-      }
+      _artistList = _buildArtistsFromTracks(_trackList);
     } catch (e) {
       _hasError = true;
       _errorMessage = e.toString();
@@ -247,19 +267,10 @@ class IndexerController extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
-    _precacheArtwork();
-  }
 
-  void _precacheArtwork() {
-    final albumIds = <int>{};
-    for (final track in _allTracks) {
-      if (track.albumId != null) {
-        albumIds.add(track.albumId!);
-      }
-    }
-    debugPrint('[ARC] precaching artwork for ${albumIds.length} albums...');
-    for (final id in albumIds) {
-      ArtworkService.inst.getArtwork(id, MediaType.album);
+    if (_pendingRescan) {
+      _pendingRescan = false;
+      scanDevice();
     }
   }
 

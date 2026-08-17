@@ -14,6 +14,7 @@ import '../../data/models/artist.dart';
 import '../../data/models/track.dart';
 import '../../services/artwork_service.dart';
 import '../../services/media_store_service.dart';
+import '../../controller/settings_controller.dart';
 import '../widgets/track_context_menu.dart';
 import 'subpages/album_detail_page.dart';
 import 'subpages/artist_detail_page.dart';
@@ -312,7 +313,11 @@ class _SearchTrackTile extends StatelessWidget {
         child: SizedBox(
           width: 44,
           height: 44,
-          child: _SearchArtwork(id: track.albumId, type: MediaType.album),
+          child: _SearchArtwork(
+            id: track.albumId,
+            type: MediaType.album,
+            track: track,
+          ),
         ),
       ),
       title: Text(
@@ -366,7 +371,12 @@ class _SearchAlbumTile extends StatelessWidget {
         child: SizedBox(
           width: 48,
           height: 48,
-          child: _SearchArtwork(id: album.id, type: MediaType.album),
+          child: _SearchArtwork(
+            id: album.id,
+            type: MediaType.album,
+            albumName: album.album,
+            artistName: album.artist,
+          ),
         ),
       ),
       title: Text(
@@ -409,7 +419,11 @@ class _SearchArtistTile extends StatelessWidget {
         child: SizedBox(
           width: 48,
           height: 48,
-          child: _SearchArtwork(id: artist.id, type: MediaType.artist),
+          child: _SearchArtwork(
+            id: artist.id,
+            type: MediaType.artist,
+            artistName: artist.artist,
+          ),
         ),
       ),
       title: Text(
@@ -438,34 +452,80 @@ class _SearchArtistTile extends StatelessWidget {
 class _SearchArtwork extends StatefulWidget {
   final int? id;
   final MediaType type;
+  final ArcTrack? track;
+  final String? albumName;
+  final String? artistName;
 
-  const _SearchArtwork({required this.id, required this.type});
+  const _SearchArtwork({
+    required this.id,
+    required this.type,
+    this.track,
+    this.albumName,
+    this.artistName,
+  });
 
   @override
   State<_SearchArtwork> createState() => _SearchArtworkState();
 }
 
 class _SearchArtworkState extends State<_SearchArtwork> {
-  late Future<Uint8List?> _future;
+  late Future<ImageProvider?> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = widget.id != null
-        ? ArtworkService.inst.getArtwork(widget.id!, widget.type)
-        : Future.value(null);
+    _future = _loadArtwork();
+  }
+
+  Future<ImageProvider?> _loadArtwork() async {
+    final size = SettingsController.inst.artworkQuality.listDecodeSize;
+    final id = widget.id;
+    if (id != null) {
+      final cached = ArtworkService.inst.getCachedImageProvider(
+        id,
+        namespace: 'search',
+      );
+      if (cached != null) return cached;
+    }
+
+    Uint8List? bytes;
+    if (widget.track != null) {
+      bytes = await ArtworkService.inst.getHighResArtwork(widget.track!);
+    } else if (widget.type == MediaType.artist && widget.artistName != null) {
+      bytes = await ArtworkService.inst.getHighResArtistArt(
+        widget.artistName!,
+        id: widget.id,
+      );
+    } else if (widget.type == MediaType.album &&
+        widget.albumName != null &&
+        widget.artistName != null) {
+      bytes = await ArtworkService.inst.getHighResAlbumArt(
+        widget.albumName!,
+        widget.artistName!,
+        id: widget.id,
+      );
+    } else if (widget.id != null) {
+      bytes = await ArtworkService.inst.getArtwork(widget.id!, widget.type);
+    }
+
+    if (bytes == null || bytes.isEmpty) return null;
+    final provider = ResizeImage(MemoryImage(bytes), width: size, height: size);
+    if (id != null) {
+      ArtworkService.inst.cacheImageProvider(id, provider, namespace: 'search');
+    }
+    return provider;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return FutureBuilder<Uint8List?>(
+    return FutureBuilder<ImageProvider?>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.hasData && snapshot.data != null) {
-          return Image.memory(
-            snapshot.data!,
+          return Image(
+            image: snapshot.data!,
             fit: BoxFit.cover,
             gaplessPlayback: true,
           );

@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -10,6 +8,7 @@ import '../../core/extensions.dart';
 import '../../data/models/artist.dart';
 import '../../services/artwork_service.dart';
 import '../../services/media_store_service.dart';
+import '../../controller/settings_controller.dart';
 import 'subpages/artist_detail_page.dart';
 
 class ArtistsPage extends StatelessWidget {
@@ -118,17 +117,33 @@ class _ArtistArtworkState extends State<_ArtistArtwork> {
     _artworkFuture = _loadArtwork();
   }
 
-  Future<Uint8List?> _loadArtwork() async {
+  Future<ImageProvider?> _loadArtwork() async {
+    final cached = ArtworkService.inst.getCachedImageProvider(
+      widget.artistId,
+      namespace: 'artist',
+    );
+    if (cached != null) return cached;
+
+    final size = SettingsController.inst.artworkQuality.listDecodeSize;
     final local = await ArtworkService.inst.getArtwork(
       widget.artistId,
       MediaType.artist,
     );
-    if (local != null && local.isNotEmpty) return local;
+    var bytes = (local != null && local.isNotEmpty)
+        ? local
+        : await ArtworkService.inst.fetchArtistPhoto(
+            widget.artistName,
+            widget.artistId,
+          );
+    if (bytes == null || bytes.isEmpty) return null;
 
-    return ArtworkService.inst.fetchArtistPhoto(
-      widget.artistName,
+    final provider = ResizeImage(MemoryImage(bytes), width: size, height: size);
+    ArtworkService.inst.cacheImageProvider(
       widget.artistId,
+      provider,
+      namespace: 'artist',
     );
+    return provider;
   }
 
   @override
@@ -139,8 +154,8 @@ class _ArtistArtworkState extends State<_ArtistArtwork> {
       future: _artworkFuture,
       builder: (context, snapshot) {
         if (snapshot.hasData && snapshot.data != null) {
-          return Image.memory(
-            snapshot.data!,
+          return Image(
+            image: snapshot.data! as ImageProvider,
             fit: BoxFit.cover,
             gaplessPlayback: true,
           );
