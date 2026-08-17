@@ -24,6 +24,10 @@ class ArtworkService {
   final _imageProviderCache = <String, ImageProvider?>{};
   final _cacheOrder = <int>[];
   static const _maxCache = 300;
+
+  // Null markers expire so a transient MediaStore miss self-heals on a later
+  // launch instead of permanently blanking an artwork (OPTIMIZACIONES.md).
+  static const _nullMarkerTtlMs = 24 * 60 * 60 * 1000; // 24h
   final _nullCache = <int, Set<MediaType>>{};
   final _loggedNulls = <int>{};
   int _preloadToken = 0;
@@ -154,23 +158,48 @@ class ArtworkService {
         _cache[id] = bytes;
         _cacheHit(id);
         _evictIfNeeded();
+        logD('[Artwork:file-hit] id=$id (${bytes.length})');
         result = bytes;
         return bytes;
       }
 
       // Skip the expensive cross-process MediaStore query when we already know
       // this id has no art of this type. The marker persists across app
-      // restarts so we don't re-query MediaStore on every launch.
+      // restarts (with a TTL) so we don't re-query MediaStore on every launch,
+      // but a transient miss self-heals once the marker expires.
       final nullMarker = File('${dir.path}/$id._null_${type.index}');
       if (await nullMarker.exists()) {
-        _nullCache.putIfAbsent(id, () => {}).add(type);
-        result = null;
-        return null;
+        final ts = int.tryParse(await nullMarker.readAsString());
+        final expired =
+            ts == null ||
+            DateTime.now().millisecondsSinceEpoch - ts > _nullMarkerTtlMs;
+        if (!expired) {
+          _nullCache.putIfAbsent(id, () => {}).add(type);
+          logD('[Artwork:null-marker] id=$id type=${type.name}');
+          result = null;
+          return null;
+        }
+        try {
+          await nullMarker.delete();
+        } catch (_) {}
+        logD(
+          '[Artwork:null-marker EXPIRED] id=$id type=${type.name} → requery',
+        );
       }
 
       await _acquire();
       try {
-        final artwork = await MediaStoreService.inst.queryArtwork(id, type);
+        Uint8List? artwork;
+        for (var attempt = 0; attempt < 2; attempt++) {
+          artwork = await MediaStoreService.inst.queryArtwork(id, type);
+          if (artwork != null && artwork.isNotEmpty) break;
+          logD(
+            '[Artwork:query-null] id=$id type=${type.name} attempt=$attempt',
+          );
+          if (attempt < 1) {
+            await Future.delayed(const Duration(milliseconds: 150));
+          }
+        }
 
         if (artwork != null && artwork.isNotEmpty) {
           await file.writeAsBytes(artwork);
@@ -178,15 +207,22 @@ class ArtworkService {
           _cacheHit(id);
           _evictIfNeeded();
           _trimDiskIfNeeded();
-        } else {
-          _nullCache.putIfAbsent(id, () => {}).add(type);
-          try {
-            await nullMarker.create();
-          } catch (_) {}
+          logD(
+            '[Artwork:query-ok] id=$id type=${type.name} (${artwork.length})',
+          );
+          result = artwork;
+          return artwork;
         }
 
-        result = artwork;
-        return artwork;
+        _nullCache.putIfAbsent(id, () => {}).add(type);
+        try {
+          await nullMarker.writeAsString(
+            DateTime.now().millisecondsSinceEpoch.toString(),
+          );
+        } catch (_) {}
+        logD('[Artwork:null-persist] id=$id type=${type.name}');
+        result = null;
+        return null;
       } finally {
         _release();
       }
@@ -543,14 +579,23 @@ class ArtworkService {
     final albumId = track.albumId;
     if (albumId != null) {
       bytes = await getThumbnailBytes(albumId, MediaType.album, pixelSize);
+      if (bytes != null && bytes.isNotEmpty) {
+        logD('[Artwork:provider thumb] id=${track.id} albumId=$albumId');
+      }
     }
     if (bytes == null || bytes.isEmpty) {
       bytes = await getLocalArtwork(track);
-      if (bytes == null || bytes.isEmpty) {
-        if (!onlineFallback) return null;
-        bytes = await getTrackArtwork(track);
-        if (bytes == null || bytes.isEmpty) return null;
+      if (bytes != null && bytes.isNotEmpty) {
+        logD('[Artwork:provider local] id=${track.id}');
       }
+    }
+    if (bytes == null || bytes.isEmpty) {
+      if (!onlineFallback) return null;
+      bytes = await getTrackArtwork(track);
+      if (bytes != null && bytes.isNotEmpty) {
+        logD('[Artwork:provider online] id=${track.id}');
+      }
+      if (bytes == null || bytes.isEmpty) return null;
     }
 
     final provider = ResizeImage(
