@@ -141,6 +141,12 @@ class CanvasService {
   /// the resulting canvas URL (or its absence) is cached in memory so rebuilds
   /// and widget remounts don't trigger a second Spotify API call. Concurrent
   /// calls for the same track share a single in-flight request.
+  /// Returns `true` when the canvas result for [id] has already been resolved
+  /// and turned out to be absent (no Canvas for this track). Used by the player
+  /// to show a persistent "no canvas" marker.
+  bool hasNoCanvas(int? id) =>
+      id != null && _canvasUrls.containsKey(id) && _canvasUrls[id] == null;
+
   Future<String?> getCanvasUrl(ArcTrack track) async {
     final id = track.id;
     if (_canvasUrls.containsKey(id)) return _canvasUrls[id];

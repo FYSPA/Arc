@@ -4,6 +4,7 @@ import 'package:video_player/video_player.dart';
 import '../../core/utils.dart';
 import '../../data/models/track.dart';
 import '../../services/canvas_service.dart';
+import '../../services/toast_service.dart';
 
 /// Full-screen looping Spotify Canvas video shown as the bottom layer of the
 /// full player. Fetches the canvas URL only when the track changes (not on every
@@ -51,6 +52,7 @@ class _CanvasBackgroundState extends State<CanvasBackground> {
       if (!mounted) return;
 
       if (url == null || url.isEmpty) {
+        ToastService.inst.showNoCanvas(track);
         setState(() => _hasCanvas = false);
         return;
       }

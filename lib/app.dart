@@ -1,3 +1,4 @@
+import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -29,6 +30,8 @@ class ArcApp extends StatelessWidget {
           return MaterialApp(
             title: 'Arc',
             debugShowCheckedModeBanner: false,
+            builder: BotToastInit(),
+            navigatorObservers: [BotToastNavigatorObserver()],
             themeMode: settings.themeMode,
             theme: AppThemes.light(settings.mainColor),
             darkTheme: AppThemes.dark(

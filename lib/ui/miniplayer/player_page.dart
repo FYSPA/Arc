@@ -11,6 +11,7 @@ import '../../core/broken_icons.dart';
 import '../../core/extensions.dart';
 import '../../data/models/track.dart';
 import '../../services/artwork_service.dart';
+import '../../services/canvas_service.dart';
 import '../widgets/animated_artwork_widget.dart';
 import '../widgets/canvas_background.dart';
 import 'lyrics_view.dart';
@@ -263,6 +264,10 @@ class _PlayerPageState extends State<PlayerPage> {
           child: Center(child: _buildArtwork(context, player, accent, theme)),
         ),
         _buildTrackInfo(context, player, theme),
+        if (SettingsController.inst.enableSpotifyCanvas &&
+            SettingsController.inst.hasSpotifyCanvasCredentials &&
+            CanvasService.inst.hasNoCanvas(player.currentTrack?.id))
+          _buildNoCanvasMark(theme),
         const SizedBox(height: 24),
         _buildControls(context, player, accent),
         const SizedBox(height: 12),
@@ -285,7 +290,7 @@ class _PlayerPageState extends State<PlayerPage> {
     final size = settings.artworkSize;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+      padding: const EdgeInsets.symmetric(horizontal: 15.0),
       child: Container(
         width: size,
         height: size,
@@ -314,6 +319,37 @@ class _PlayerPageState extends State<PlayerPage> {
                 size: size,
               )
             : SizedBox(width: size, height: size),
+      ),
+    );
+  }
+
+  Widget _buildNoCanvasMark(ThemeData theme) {
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Broken.video_slash,
+            size: 16,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Sin Canvas',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -247,7 +247,7 @@ class SettingsPage extends StatelessWidget {
                       value: settings.artworkSize,
                       min: 280.0,
                       max: 460.0,
-                      divisions: 14,
+                      divisions: 15,
                       onChanged: settings.setArtworkSize,
                     ),
                   ),
