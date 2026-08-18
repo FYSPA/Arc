@@ -58,6 +58,7 @@ class AnimatedArtworkService {
       appleMusicStorefront: s.appleMusicStorefront,
       appleMusicAmpToken: s.appleMusicAmpToken,
       musiclinkApiKey: s.musiclinkApiKey,
+      musiclinkApiKeys: s.allMusiclinkApiKeys,
     );
 
     logD(

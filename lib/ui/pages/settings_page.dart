@@ -207,11 +207,42 @@ class SettingsPage extends StatelessWidget {
                   onChanged: settings.setEnableAnimatedArtwork,
                 ),
                 SettingsTile(
+                  icon: Broken.video,
+                  title: 'Spotify Canvas (fondo)',
+                  subtitle: 'Video de Spotify de fondo en el player completo',
+                  type: SettingsTileType.toggle,
+                  value: settings.enableSpotifyCanvas,
+                  onChanged: settings.setEnableSpotifyCanvas,
+                ),
+                SettingsTile(
+                  icon: Broken.brush,
+                  title: 'Tinte del cristal',
+                  subtitle: settings.canvasGlassTint == CanvasGlassTint.neutral
+                      ? 'Gris neutro'
+                      : 'Color de la carátula',
+                  trailing: SegmentedButton<CanvasGlassTint>(
+                    selected: {settings.canvasGlassTint},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (selection) =>
+                        settings.setCanvasGlassTint(selection.first),
+                    segments: const [
+                      ButtonSegment(
+                        value: CanvasGlassTint.neutral,
+                        label: Text('Neutro'),
+                      ),
+                      ButtonSegment(
+                        value: CanvasGlassTint.accent,
+                        label: Text('Carátula'),
+                      ),
+                    ],
+                  ),
+                ),
+                SettingsTile(
                   icon: Broken.command_square,
                   title: 'Artwork Size',
                   subtitle: '${settings.artworkSize.round()}px',
                   trailing: SizedBox(
-                    width: 180.0,
+                    width: 210.0,
                     child: Slider(
                       value: settings.artworkSize,
                       min: 280.0,
@@ -302,15 +333,28 @@ class SettingsPage extends StatelessWidget {
                 ),
                 SettingsTile(
                   icon: Broken.link,
-                  title: 'MusicLink',
+                  title: 'MusicLink 1',
                   subtitle: settings.musiclinkApiKey != null
-                      ? 'Configured'
+                      ? 'Key 1 configured'
                       : 'Not configured',
                   onTap: () => _showSingleKeyDialog(
                     context,
-                    title: 'MusicLink API Key',
+                    title: 'MusicLink API Key 1',
                     value: settings.musiclinkApiKey,
                     onChanged: settings.setMusiclinkApiKey,
+                  ),
+                ),
+                SettingsTile(
+                  icon: Broken.link,
+                  title: 'MusicLink 2',
+                  subtitle: settings.musiclinkApiKey2 != null
+                      ? 'Key 2 configured'
+                      : 'Not configured',
+                  onTap: () => _showSingleKeyDialog(
+                    context,
+                    title: 'MusicLink API Key 2',
+                    value: settings.musiclinkApiKey2,
+                    onChanged: settings.setMusiclinkApiKey2,
                   ),
                 ),
                 SettingsTile(

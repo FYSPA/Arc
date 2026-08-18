@@ -11,6 +11,8 @@ enum PerformanceMode { off, powerSaving, limit80 }
 
 enum ArtworkQuality { low, medium, high }
 
+enum CanvasGlassTint { neutral, accent }
+
 extension ArtworkQualityX on ArtworkQuality {
   int get listDecodeSize {
     switch (this) {
@@ -143,6 +145,38 @@ class SettingsController extends ChangeNotifier {
   String? _musiclinkApiKey;
   String? get musiclinkApiKey => _musiclinkApiKey;
 
+  String? _musiclinkApiKey2;
+  String? get musiclinkApiKey2 => _musiclinkApiKey2;
+
+  /// Both MusicLink keys (non-empty) for arx_canvas rotation on HTTP 429.
+  List<String> get allMusiclinkApiKeys {
+    final keys = <String>[];
+    if (_musiclinkApiKey != null && _musiclinkApiKey!.isNotEmpty) {
+      keys.add(_musiclinkApiKey!);
+    }
+    if (_musiclinkApiKey2 != null && _musiclinkApiKey2!.isNotEmpty) {
+      keys.add(_musiclinkApiKey2!);
+    }
+    return keys;
+  }
+
+  // ──────────────────── Spotify Canvas (player background) ────────────────────
+
+  bool _enableSpotifyCanvas = true;
+  bool get enableSpotifyCanvas => _enableSpotifyCanvas;
+
+  CanvasGlassTint _canvasGlassTint = CanvasGlassTint.accent;
+  CanvasGlassTint get canvasGlassTint => _canvasGlassTint;
+
+  /// True when the user has configured either an sp_dc cookie or Spotify Web
+  /// API credentials — required for the canvas background to be available.
+  bool get hasSpotifyCanvasCredentials =>
+      (spotifySpDcCookie != null && spotifySpDcCookie!.isNotEmpty) ||
+      (spotifyClientId != null &&
+          spotifyClientId!.isNotEmpty &&
+          spotifyClientSecret != null &&
+          spotifyClientSecret!.isNotEmpty);
+
   // ──────────────────── Load ────────────────────
 
   Future<void> load() async {
@@ -222,6 +256,10 @@ class SettingsController extends ChangeNotifier {
     _appleMusicStorefront = _prefs.getString('apple_music_storefront') ?? 'us';
     _appleMusicAmpToken = _prefs.getString('apple_music_amp_token');
     _musiclinkApiKey = _prefs.getString('musiclink_api_key');
+    _musiclinkApiKey2 = _prefs.getString('musiclink_api_key_2');
+    _enableSpotifyCanvas = _prefs.getBool('enable_spotify_canvas') ?? true;
+    _canvasGlassTint =
+        CanvasGlassTint.values[_prefs.getInt('canvas_glass_tint') ?? 0];
 
     notifyListeners();
   }
@@ -262,6 +300,9 @@ class SettingsController extends ChangeNotifier {
     _prefs.setString('apple_music_storefront', _appleMusicStorefront);
     _prefs.setString('apple_music_amp_token', _appleMusicAmpToken ?? '');
     _prefs.setString('musiclink_api_key', _musiclinkApiKey ?? '');
+    _prefs.setString('musiclink_api_key_2', _musiclinkApiKey2 ?? '');
+    _prefs.setBool('enable_spotify_canvas', _enableSpotifyCanvas);
+    _prefs.setInt('canvas_glass_tint', _canvasGlassTint.index);
   }
 
   // ──────────────────── Setters ────────────────────
@@ -489,6 +530,24 @@ class SettingsController extends ChangeNotifier {
 
   void setMusiclinkApiKey(String? value) {
     _musiclinkApiKey = value?.isEmpty == true ? null : value;
+    notifyListeners();
+    _save();
+  }
+
+  void setMusiclinkApiKey2(String? value) {
+    _musiclinkApiKey2 = value?.isEmpty == true ? null : value;
+    notifyListeners();
+    _save();
+  }
+
+  void setEnableSpotifyCanvas(bool value) {
+    _enableSpotifyCanvas = value;
+    notifyListeners();
+    _save();
+  }
+
+  void setCanvasGlassTint(CanvasGlassTint value) {
+    _canvasGlassTint = value;
     notifyListeners();
     _save();
   }

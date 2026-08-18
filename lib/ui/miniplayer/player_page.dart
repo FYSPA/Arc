@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'dart:ui';
 import 'package:provider/provider.dart';
 
 import '../../controller/current_color_controller.dart';
@@ -11,6 +12,7 @@ import '../../core/extensions.dart';
 import '../../data/models/track.dart';
 import '../../services/artwork_service.dart';
 import '../widgets/animated_artwork_widget.dart';
+import '../widgets/canvas_background.dart';
 import 'lyrics_view.dart';
 
 import '../../core/utils.dart';
@@ -109,6 +111,9 @@ class _PlayerPageState extends State<PlayerPage> {
         );
     final colorCtrl = context.watch<CurrentColorController>();
     final accent = colorCtrl.accentColor;
+    final settings = context.watch<SettingsController>();
+    final showCanvas =
+        settings.enableSpotifyCanvas && settings.hasSpotifyCanvasCredentials;
 
     if (data.currentTrackId != _lastTrackId) {
       _lastTrackId = data.currentTrackId;
@@ -130,31 +135,59 @@ class _PlayerPageState extends State<PlayerPage> {
             : Brightness.dark,
       ),
       child: Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                accent.withOpacityExt(0.15),
-                theme.scaffoldBackgroundColor,
-              ],
-            ),
-          ),
-          child: SafeArea(
-            child: Column(
-              children: [
-                _buildAppBar(context, theme, player),
-                Expanded(
-                  child: _showLyrics
-                      ? const LyricsView()
-                      : _showQueue
-                      ? _buildQueueView(context, theme, player, accent)
-                      : _buildMainPlayer(context, theme, player, accent),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            // L1: Spotify Canvas background (full-screen, looping, muted).
+            if (showCanvas)
+              Positioned.fill(
+                child: CanvasBackground(track: data.currentTrack),
+              ),
+            // Fallback gradient. When the canvas is shown this becomes a
+            // translucent scrim so the video remains visible beneath the glass;
+            // otherwise it is the opaque background (pre-canvas behavior).
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    accent.withOpacityExt(showCanvas ? 0.05 : 0.15),
+                    theme.scaffoldBackgroundColor.withValues(
+                      alpha: showCanvas ? 0.55 : 1.0,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+            // L2: glassmorphism over the canvas.
+            if (showCanvas)
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: Container(
+                    color: settings.canvasGlassTint == CanvasGlassTint.neutral
+                        ? Colors.black.withValues(alpha: 0.35)
+                        : accent.withValues(alpha: 0.25),
+                  ),
+                ),
+              ),
+            // L3: existing content (app bar, artwork, controls).
+            SafeArea(
+              child: Column(
+                children: [
+                  _buildAppBar(context, theme, player),
+                  Expanded(
+                    child: _showLyrics
+                        ? const LyricsView()
+                        : _showQueue
+                        ? _buildQueueView(context, theme, player, accent)
+                        : _buildMainPlayer(context, theme, player, accent),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
