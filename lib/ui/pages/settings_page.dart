@@ -99,6 +99,7 @@ class SettingsPage extends StatelessWidget {
                       ? 'Español'
                       : 'English',
                   onTap: () => showLanguageDialog(context, settings),
+                  disabled: true,
                 ),
                 SettingsTile(
                   icon: Broken.command_square,
@@ -115,6 +116,7 @@ class SettingsPage extends StatelessWidget {
                       onChanged: settings.setBorderRadiusMultiplier,
                     ),
                   ),
+                  disabled: true,
                 ),
               ],
             ),
@@ -135,12 +137,14 @@ class SettingsPage extends StatelessWidget {
                   title: 'Library Tabs',
                   subtitle: '${settings.libraryTabs.length} active',
                   onTap: () => showLibraryTabsDialog(context, settings),
+                  disabled: true,
                 ),
                 SettingsTile(
                   icon: Broken.musicnote,
                   title: 'Default Tab',
                   subtitle: settings.defaultLibraryTab,
                   onTap: () => _showDefaultTabDialog(context, settings),
+                  disabled: true,
                 ),
                 SettingsTile(
                   icon: Broken.folder,
@@ -163,6 +167,7 @@ class SettingsPage extends StatelessWidget {
                     settings.foldersToExclude,
                     settings.removeFolderToExclude,
                   ),
+                  disabled: true,
                 ),
                 SettingsTile(
                   icon: Broken.eye,
@@ -171,6 +176,7 @@ class SettingsPage extends StatelessWidget {
                   type: SettingsTileType.toggle,
                   value: settings.includeVideos,
                   onChanged: settings.setIncludeVideos,
+                  disabled: true,
                 ),
               ],
             ),
@@ -191,6 +197,7 @@ class SettingsPage extends StatelessWidget {
                   title: 'Performance Mode',
                   subtitle: _performanceModeText(settings.performanceMode),
                   onTap: () => showPerformanceDialog(context, settings),
+                  disabled: true,
                 ),
                 SettingsTile(
                   icon: Broken.image,
@@ -282,6 +289,7 @@ class SettingsPage extends StatelessWidget {
                   title: 'FAB Action',
                   subtitle: _fabTypeText(settings.fabType),
                   onTap: () => _showFabTypeDialog(context, settings),
+                  disabled: true,
                 ),
               ],
             ),
