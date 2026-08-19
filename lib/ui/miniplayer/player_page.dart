@@ -33,11 +33,18 @@ class _PlayerPageState extends State<PlayerPage> {
   @override
   void initState() {
     super.initState();
+    PlayerController.inst.setFullPlayerOpen(true);
     SchedulerBinding.instance.addPostFrameCallback((_) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
         _extractColor();
       });
     });
+  }
+
+  @override
+  void dispose() {
+    PlayerController.inst.setFullPlayerOpen(false);
+    super.dispose();
   }
 
   Future<void> _extractColor() async {

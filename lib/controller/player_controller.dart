@@ -38,6 +38,7 @@ class PlayerController extends ChangeNotifier {
   static const _maxConsecutiveSkips = 5;
   bool _isRestoring = false;
   bool _streamsInitialized = false;
+  bool _isFullPlayerOpen = false;
   StreamSubscription<PlaybackState>? _stateSub;
   StreamSubscription<Duration>? _posSub;
   StreamSubscription<String>? _nameSub;
@@ -56,6 +57,16 @@ class PlayerController extends ChangeNotifier {
   int get queueIndex => _queueIndex;
   bool get hasTrack => _currentTrack != null;
   bool get hasQueue => _queue.isNotEmpty;
+
+  /// True while the full-screen player is open, so the persistent bottom
+  /// chrome (miniplayer + nav bar) can hide itself.
+  bool get isFullPlayerOpen => _isFullPlayerOpen;
+
+  void setFullPlayerOpen(bool open) {
+    if (_isFullPlayerOpen == open) return;
+    _isFullPlayerOpen = open;
+    notifyListeners();
+  }
 
   @override
   void notifyListeners() {

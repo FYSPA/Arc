@@ -9,6 +9,7 @@ import 'controller/player_controller.dart';
 import 'controller/settings_controller.dart';
 import 'core/themes.dart';
 import 'ui/pages/splash_page.dart';
+import 'ui/widgets/bottom_chrome.dart';
 
 class ArcApp extends StatelessWidget {
   const ArcApp({super.key});
@@ -30,7 +31,15 @@ class ArcApp extends StatelessWidget {
           return MaterialApp(
             title: 'Arc',
             debugShowCheckedModeBanner: false,
-            builder: BotToastInit(),
+            builder: (context, child) {
+              final withToast = BotToastInit()(context, child);
+              return Column(
+                children: [
+                  Expanded(child: withToast),
+                  const BottomChrome(),
+                ],
+              );
+            },
             navigatorObservers: [BotToastNavigatorObserver()],
             themeMode: settings.themeMode,
             theme: AppThemes.light(settings.mainColor),

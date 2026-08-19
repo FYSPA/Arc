@@ -46,6 +46,15 @@ class _MiniplayerBarState extends State<MiniplayerBar> {
     final accent = context.select<CurrentColorController, Color>(
       (c) => c.accentColor,
     );
+    final position = context.select<PlayerController, Duration>(
+      (p) => p.position,
+    );
+    final duration = context.select<PlayerController, Duration>(
+      (p) => p.duration,
+    );
+    final ratio = duration.inMilliseconds > 0
+        ? (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)
+        : 0.0;
     final borderRadius = BorderRadius.vertical(top: Radius.circular(20.0));
     final hasTrack = playerData.hasTrack;
 
@@ -193,6 +202,29 @@ class _MiniplayerBarState extends State<MiniplayerBar> {
                         ),
                       ),
                     ],
+                  ),
+                ),
+                Positioned(
+                  bottom: 0.0,
+                  left: 0.0,
+                  right: 0.0,
+                  child: GestureDetector(
+                    onTap: () {},
+                    behavior: HitTestBehavior.opaque,
+                    child: Slider(
+                      value: ratio,
+                      onChanged: hasTrack
+                          ? (v) => context.read<PlayerController>().seek(
+                              Duration(
+                                milliseconds: (v * duration.inMilliseconds)
+                                    .round(),
+                              ),
+                            )
+                          : null,
+                      activeColor: accent,
+                      inactiveColor: theme.colorScheme.onSurfaceVariant
+                          .withOpacityExt(0.35),
+                    ),
                   ),
                 ),
               ],

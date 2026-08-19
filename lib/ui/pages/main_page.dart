@@ -7,7 +7,6 @@ import '../../controller/navigator_controller.dart';
 
 import '../../core/broken_icons.dart';
 import '../../core/enums.dart';
-import '../miniplayer/miniplayer_bar.dart';
 import '../pages/settings_page.dart';
 import '../widgets/amoled_glow_effect.dart';
 import 'albums_page.dart';
@@ -41,14 +40,6 @@ class _MainPageState extends State<MainPage> {
       indexer.scanDevice();
     }
   }
-
-  static const _tabIcons = <IconData>[
-    Broken.home_2,
-    Broken.musicnote,
-    Broken.music_dashboard,
-    Broken.user,
-    Broken.folder_open,
-  ];
 
   static const _tabPages = <Widget>[
     HomePage(),
@@ -104,37 +95,6 @@ class _MainPageState extends State<MainPage> {
           children: [
             const AmoledGlowEffect(),
             IndexedStack(index: currentIndex, children: _tabPages),
-          ],
-        ),
-        bottomNavigationBar: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const MiniplayerBar(),
-            NavigationBarTheme(
-              data: NavigationBarThemeData(
-                backgroundColor: theme.navigationBarTheme.backgroundColor,
-                indicatorColor: Color.alphaBlend(
-                  theme.colorScheme.primary.withAlpha(20),
-                  theme.colorScheme.secondaryContainer,
-                ),
-              ),
-              child: NavigationBar(
-                animationDuration: const Duration(seconds: 1),
-                elevation: 22,
-                height: 64.0,
-                labelBehavior:
-                    NavigationDestinationLabelBehavior.onlyShowSelected,
-                selectedIndex: currentIndex,
-                onDestinationSelected: (i) => nav.navigateTo(i),
-                destinations: [
-                  for (int i = 0; i < _tabs.length; i++)
-                    NavigationDestination(
-                      icon: Icon(_tabIcons[i]),
-                      label: _tabs[i].label,
-                    ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
