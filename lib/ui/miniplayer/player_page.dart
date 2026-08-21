@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:provider/provider.dart';
 
 import '../../controller/current_color_controller.dart';
+import '../../controller/navigator_controller.dart';
 import '../../controller/player_controller.dart';
 import '../../controller/settings_controller.dart';
 import '../../core/broken_icons.dart';
@@ -13,6 +14,7 @@ import '../../data/models/track.dart';
 import '../../services/artwork_service.dart';
 import '../../services/canvas_service.dart';
 import '../widgets/animated_artwork_widget.dart';
+import '../widgets/artwork_flight.dart';
 import '../widgets/canvas_background.dart';
 import 'lyrics_view.dart';
 
@@ -30,10 +32,20 @@ class _PlayerPageState extends State<PlayerPage> {
   bool _showQueue = false;
   int? _lastTrackId;
 
+  /// True while the close-flight is animating (guards against double pops).
+  bool _isFlying = false;
+
+  /// Hides the player artwork during the close-flight so it doesn't double up
+  /// with the airborne thumbnail.
+  bool _artworkHidden = false;
+
+  /// When true the route is allowed to pop (set right before the close-flight
+  /// finishes so PopScope doesn't intercept the final pop).
+  bool _allowPop = false;
+
   @override
   void initState() {
     super.initState();
-    PlayerController.inst.setFullPlayerOpen(true);
     SchedulerBinding.instance.addPostFrameCallback((_) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
         _extractColor();
@@ -43,7 +55,6 @@ class _PlayerPageState extends State<PlayerPage> {
 
   @override
   void dispose() {
-    PlayerController.inst.setFullPlayerOpen(false);
     super.dispose();
   }
 
@@ -132,70 +143,76 @@ class _PlayerPageState extends State<PlayerPage> {
 
     final player = context.read<PlayerController>();
 
-    final result = AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarBrightness: theme.brightness == Brightness.dark
-            ? Brightness.light
-            : Brightness.dark,
-        statusBarIconBrightness: theme.brightness == Brightness.dark
-            ? Brightness.light
-            : Brightness.dark,
-      ),
-      child: Scaffold(
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            // L1: Spotify Canvas background (full-screen, looping, muted).
-            if (showCanvas)
-              Positioned.fill(
-                child: CanvasBackground(track: data.currentTrack),
+    final result = PopScope(
+      canPop: _allowPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && !_isFlying) _closePlayer(context);
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarBrightness: theme.brightness == Brightness.dark
+              ? Brightness.light
+              : Brightness.dark,
+          statusBarIconBrightness: theme.brightness == Brightness.dark
+              ? Brightness.light
+              : Brightness.dark,
+        ),
+        child: Scaffold(
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              // L1: Spotify Canvas background (full-screen, looping, muted).
+              if (showCanvas)
+                Positioned.fill(
+                  child: CanvasBackground(track: data.currentTrack),
+                ),
+              // Fallback gradient. When the canvas is shown this becomes a
+              // translucent scrim so the video remains visible beneath the glass;
+              // otherwise it is the opaque background (pre-canvas behavior).
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      accent.withOpacityExt(showCanvas ? 0.05 : 0.15),
+                      theme.scaffoldBackgroundColor.withValues(
+                        alpha: showCanvas ? 0.55 : 1.0,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            // Fallback gradient. When the canvas is shown this becomes a
-            // translucent scrim so the video remains visible beneath the glass;
-            // otherwise it is the opaque background (pre-canvas behavior).
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    accent.withOpacityExt(showCanvas ? 0.05 : 0.15),
-                    theme.scaffoldBackgroundColor.withValues(
-                      alpha: showCanvas ? 0.55 : 1.0,
+              // L2: glassmorphism over the canvas.
+              if (showCanvas)
+                Positioned.fill(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                    child: Container(
+                      color: settings.canvasGlassTint == CanvasGlassTint.neutral
+                          ? Colors.black.withValues(alpha: 0.35)
+                          : accent.withValues(alpha: 0.25),
+                    ),
+                  ),
+                ),
+              // L3: existing content (app bar, artwork, controls).
+              SafeArea(
+                child: Column(
+                  children: [
+                    _buildAppBar(context, theme, player),
+                    Expanded(
+                      child: _showLyrics
+                          ? const LyricsView()
+                          : _showQueue
+                          ? _buildQueueView(context, theme, player, accent)
+                          : _buildMainPlayer(context, theme, player, accent),
                     ),
                   ],
                 ),
               ),
-            ),
-            // L2: glassmorphism over the canvas.
-            if (showCanvas)
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                  child: Container(
-                    color: settings.canvasGlassTint == CanvasGlassTint.neutral
-                        ? Colors.black.withValues(alpha: 0.35)
-                        : accent.withValues(alpha: 0.25),
-                  ),
-                ),
-              ),
-            // L3: existing content (app bar, artwork, controls).
-            SafeArea(
-              child: Column(
-                children: [
-                  _buildAppBar(context, theme, player),
-                  Expanded(
-                    child: _showLyrics
-                        ? const LyricsView()
-                        : _showQueue
-                        ? _buildQueueView(context, theme, player, accent)
-                        : _buildMainPlayer(context, theme, player, accent),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -219,7 +236,7 @@ class _PlayerPageState extends State<PlayerPage> {
         children: [
           IconButton(
             icon: const Icon(Broken.arrow_down_2, size: 28),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => _closePlayer(context),
           ),
           Expanded(
             child: Column(
@@ -271,10 +288,21 @@ class _PlayerPageState extends State<PlayerPage> {
           child: Center(child: _buildArtwork(context, player, accent, theme)),
         ),
         _buildTrackInfo(context, player, theme),
-        if (SettingsController.inst.enableSpotifyCanvas &&
-            SettingsController.inst.hasSpotifyCanvasCredentials &&
-            CanvasService.inst.hasNoCanvas(player.currentTrack?.id))
-          _buildNoCanvasMark(theme),
+        ListenableBuilder(
+          listenable: CanvasService.inst,
+          builder: (context, _) {
+            if (SettingsController.inst.enableSpotifyCanvas &&
+                SettingsController.inst.hasSpotifyCanvasCredentials) {
+              if (CanvasService.inst.hasNoCanvas(player.currentTrack?.id)) {
+                return _buildNoCanvasMark(theme);
+              }
+              if (CanvasService.inst.hasCachedCanvas(player.currentTrack?.id)) {
+                return _buildCachedCanvasMark(theme);
+              }
+            }
+            return const SizedBox.shrink();
+          },
+        ),
         const SizedBox(height: 24),
         _buildControls(context, player, accent),
         const SizedBox(height: 12),
@@ -296,7 +324,7 @@ class _PlayerPageState extends State<PlayerPage> {
     final settings = context.watch<SettingsController>();
     final size = settings.artworkSize;
 
-    return Padding(
+    final artwork = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 15.0),
       child: Container(
         width: size,
@@ -328,6 +356,75 @@ class _PlayerPageState extends State<PlayerPage> {
             : SizedBox(width: size, height: size),
       ),
     );
+    return KeyedSubtree(
+      key: NavigatorController.inst.playerArtworkKey,
+      child: Opacity(opacity: _artworkHidden ? 0.0 : 1.0, child: artwork),
+    );
+  }
+
+  /// Reverse of the open-flight: the player artwork flies back down into the
+  /// miniplayer slot, then the route pops.
+  Future<void> _closePlayer(BuildContext context) async {
+    if (_isFlying) return;
+    final box =
+        NavigatorController.inst.playerArtworkKey.currentContext
+                ?.findRenderObject()
+            as RenderBox?;
+    final sourceRect = box != null
+        ? (box.localToGlobal(Offset.zero) & box.size)
+        : null;
+    final image = NavigatorController.inst.currentArtworkImage;
+    final targetRect =
+        NavigatorController.inst.miniplayerArtworkRect ??
+        _fallbackMiniRect(context);
+
+    if (sourceRect == null) {
+      if (mounted) {
+        setState(() => _allowPop = true);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) Navigator.of(context).pop();
+        });
+      }
+      return;
+    }
+
+    _isFlying = true;
+    if (mounted) setState(() => _artworkHidden = true);
+    NavigatorController.inst.miniplayerArtworkHidden.value = true;
+    startArtworkFlight(
+      context: context,
+      sourceRect: sourceRect,
+      targetRect: targetRect,
+      image: image,
+      radiusStart: 24.0,
+      radiusEnd: 8.0,
+      durationMs: SettingsController.inst.artworkFlightCloseMs,
+      curve: Curves.easeInOutCubic,
+      onCompleted: () {
+        _isFlying = false;
+        NavigatorController.inst.miniplayerArtworkHidden.value = false;
+      },
+    );
+    // Pop immediately so the heavy PlayerPage (BackdropFilter blur) is torn
+    // down as soon as possible; the flight lives in the root overlay and keeps
+    // animating independently, so there's no remaining work competing with the
+    // descending artwork.
+    if (mounted) {
+      setState(() => _allowPop = true);
+      Navigator.of(context).pop();
+    }
+  }
+
+  /// Analytical fallback for the miniplayer slot, used only if its rect wasn't
+  /// cached (e.g. the player was opened without the miniplayer visible).
+  Rect _fallbackMiniRect(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    const w = 58.0;
+    const h = 58.0;
+    const left = 12.0;
+    const bottomInset = 70.0 + 6.0 + 80.0 - 6.0 - 58.0;
+    final top = size.height - bottomInset - h;
+    return Rect.fromLTWH(left, top, w, h);
   }
 
   Widget _buildNoCanvasMark(ThemeData theme) {
@@ -352,6 +449,37 @@ class _PlayerPageState extends State<PlayerPage> {
           const SizedBox(width: 6),
           Text(
             'Sin Canvas',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCachedCanvasMark(ThemeData theme) {
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Broken.video,
+            size: 16,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Canvas',
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),

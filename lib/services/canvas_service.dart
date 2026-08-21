@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:arx_canvas/arx_canvas.dart' as arx;
 import 'package:path_provider/path_provider.dart';
 
@@ -40,7 +42,7 @@ class _CanvasTotpGenerator extends arx.SpotifyTotpGenerator {
 /// resolver (Deezer → Odesli → MusicLink → Web API) runs only the first time,
 /// afterwards the cached track id is used directly with `getCanvas`, which is
 /// authenticated by the user's own `sp_dc` cookie (not MusicLink).
-class CanvasService {
+class CanvasService extends ChangeNotifier {
   CanvasService._();
   static final inst = CanvasService._();
 
@@ -62,6 +64,7 @@ class CanvasService {
   /// llamada a la API, sin desperdiciar red.
   final Map<int, Future<String?>> _inflight = {};
   Map<String, String>? _diskCache;
+  Map<String, String?>? _urlDiskCache;
 
   Future<Directory> get _directory async {
     if (_cacheDir != null) return _cacheDir!;
@@ -96,6 +99,36 @@ class CanvasService {
     final file = File('${dir.path}/canvas_cache.json');
     try {
       await file.writeAsString(jsonEncode(_diskCache ?? {}));
+    } catch (_) {}
+  }
+
+  /// Cache persistent de la URL del canvas por canción (key = track id). A
+  /// diferencia de [_canvasUrls] (que es solo en memoria y se pierde al reiniciar
+  /// la app), esto evita volver a consumir la API de Spotify en cada reinicio.
+  /// `null` = esta canción no tiene canvas (o falló con cookie presente).
+  Future<Map<String, String?>> get _urlCache async {
+    if (_urlDiskCache != null) return _urlDiskCache!;
+    final dir = await _directory;
+    final file = File('${dir.path}/canvas_urls.json');
+    if (await file.exists()) {
+      try {
+        final raw = await file.readAsString();
+        final map = jsonDecode(raw) as Map<String, dynamic>;
+        _urlDiskCache = map.map((k, v) => MapEntry(k, v as String?));
+      } catch (_) {
+        _urlDiskCache = {};
+      }
+    } else {
+      _urlDiskCache = {};
+    }
+    return _urlDiskCache!;
+  }
+
+  Future<void> _saveUrlCache() async {
+    final dir = await _directory;
+    final file = File('${dir.path}/canvas_urls.json');
+    try {
+      await file.writeAsString(jsonEncode(_urlDiskCache ?? {}));
     } catch (_) {}
   }
 
@@ -147,15 +180,36 @@ class CanvasService {
   bool hasNoCanvas(int? id) =>
       id != null && _canvasUrls.containsKey(id) && _canvasUrls[id] == null;
 
-  Future<String?> getCanvasUrl(ArcTrack track) async {
+  /// True cuando ya se resolvió/obtuvo un canvas para [id] (está en caché,
+  /// ya sea en memoria o persistido en disco). Usado por el player para mostrar
+  /// un indicador de que el canvas está disponible/cacheado.
+  bool hasCachedCanvas(int? id) =>
+      id != null && _canvasUrls.containsKey(id) && _canvasUrls[id] != null;
+
+  /// Borra la URL cacheada de una canción (memoria + disco) para forzar su
+  /// reobtención. Usado cuando una URL persistida expiró y el video falla al
+  /// cargar: el caller la invoca y reintenta con [getCanvasUrl] (forceRefresh).
+  Future<void> invalidateUrl(int? id) async {
+    if (id == null) return;
+    _canvasUrls.remove(id);
+    final cache = await _urlCache;
+    cache.remove(id.toString());
+    await _saveUrlCache();
+    notifyListeners();
+  }
+
+  Future<String?> getCanvasUrl(
+    ArcTrack track, {
+    bool forceRefresh = false,
+  }) async {
     final id = track.id;
-    if (_canvasUrls.containsKey(id)) return _canvasUrls[id];
+    if (!forceRefresh && _canvasUrls.containsKey(id)) return _canvasUrls[id];
     // Si ya hay una petición en vuelo para esta canción, compartirla en lugar
     // de disparar otra (el usuario puede haber entrado/salido del player).
     final existing = _inflight[id];
     if (existing != null) return existing;
 
-    final future = _fetchCanvasForTrack(track, id);
+    final future = _fetchCanvasForTrack(track, id, forceRefresh: forceRefresh);
     _inflight[id] = future;
     try {
       return await future;
@@ -164,9 +218,30 @@ class CanvasService {
     }
   }
 
-  Future<String?> _fetchCanvasForTrack(ArcTrack track, int id) async {
+  Future<String?> _fetchCanvasForTrack(
+    ArcTrack track,
+    int id, {
+    bool forceRefresh = false,
+  }) async {
     final cookiePresent =
         SettingsController.inst.spotifySpDcCookie?.isNotEmpty ?? false;
+
+    // Reusa la URL (o la ausencia de ella) cacheada en disco ANTES de resolver
+    // el spotifyTrackId, para no consumir la API en cada reinicio cuando ya
+    // sabemos que una canción no tiene canvas (caché con valor null).
+    if (!forceRefresh) {
+      final urlCache = await _urlCache;
+      if (urlCache.containsKey(id.toString())) {
+        final cached = urlCache[id.toString()];
+        _canvasUrls[id] = cached;
+        notifyListeners();
+        logD(
+          '[Canvas] url reusada desde caché de disco para "${track.title}"'
+          '${cached == null ? ' (sin canvas)' : ''}',
+        );
+        return cached;
+      }
+    }
 
     String? spotifyId = _spotifyIds[id];
     if (spotifyId == null) {
@@ -193,7 +268,13 @@ class CanvasService {
         logD(
           '[Canvas] no spotifyTrackId for "${track.title}" / "${track.artist}"',
         );
-        if (cookiePresent) _canvasUrls[id] = null;
+        if (cookiePresent) {
+          _canvasUrls[id] = null;
+          final urlCache = await _urlCache;
+          urlCache[id.toString()] = null;
+          await _saveUrlCache();
+          notifyListeners();
+        }
         return null;
       }
 
@@ -205,7 +286,13 @@ class CanvasService {
     }
 
     final url = await _fetchCanvas(spotifyId);
-    if (cookiePresent) _canvasUrls[id] = url;
+    if (cookiePresent) {
+      _canvasUrls[id] = url;
+      final urlCache = await _urlCache;
+      urlCache[id.toString()] = url;
+      await _saveUrlCache();
+      notifyListeners();
+    }
     return url;
   }
 
@@ -226,14 +313,6 @@ class CanvasService {
       'hasSpace=$hasSpace auth=${_getAuth().isAuthenticated}',
     );
     try {
-      // Sonda explícita del token: distingue cookie mal formada de secreto
-      // TOTP obsoleto.
-      try {
-        final token = await _getAuth().getAccessToken();
-        logD('[Canvas] sp_dc token OK (len=${token.length})');
-      } on Object catch (e) {
-        logD('[Canvas] sp_dc getAccessToken FAILED: ${e.runtimeType}: $e');
-      }
       final video = await _getClient().getCanvas(spotifyId);
       if (video != null && video.url.isNotEmpty) {
         logD(

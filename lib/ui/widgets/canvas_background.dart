@@ -35,7 +35,7 @@ class _CanvasBackgroundState extends State<CanvasBackground> {
     if (oldWidget.track?.id != widget.track?.id) _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool forceRefresh = false, bool retried = false}) async {
     _disposeController();
     final track = widget.track;
     if (track == null) {
@@ -45,10 +45,13 @@ class _CanvasBackgroundState extends State<CanvasBackground> {
 
     // Evita dos fetches del mismo track si el widget se remonta rápido (el
     // CanvasService ya cachea el resultado, pero esto corta el in-flight).
-    if (_loadingTrackId == track.id) return;
+    if (!forceRefresh && _loadingTrackId == track.id) return;
     _loadingTrackId = track.id;
     try {
-      final url = await CanvasService.inst.getCanvasUrl(track);
+      final url = await CanvasService.inst.getCanvasUrl(
+        track,
+        forceRefresh: forceRefresh,
+      );
       if (!mounted) return;
 
       if (url == null || url.isEmpty) {
@@ -57,7 +60,10 @@ class _CanvasBackgroundState extends State<CanvasBackground> {
         return;
       }
 
-      final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+      final controller = VideoPlayerController.networkUrl(
+        Uri.parse(url),
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+      );
       await controller.initialize();
       controller.setLooping(true);
       controller.setVolume(0);
@@ -67,6 +73,16 @@ class _CanvasBackgroundState extends State<CanvasBackground> {
       setState(() => _hasCanvas = true);
     } catch (e) {
       logD('[Canvas] video init failed: $e');
+      // Una URL persistida puede haber expirado: invalida el caché y reintenta
+      // una vez obteniendo una fresca, en vez de fallar para siempre.
+      if (!retried) {
+        await CanvasService.inst.invalidateUrl(track.id);
+        if (mounted) {
+          _loadingTrackId = null;
+          await _load(forceRefresh: true, retried: true);
+          return;
+        }
+      }
       setState(() => _hasCanvas = false);
     } finally {
       if (_loadingTrackId == track.id) _loadingTrackId = null;
