@@ -9,9 +9,13 @@ import '../../controller/player_controller.dart';
 import '../../core/broken_icons.dart';
 import '../../core/extensions.dart';
 import '../../data/models/track.dart';
+import '../../data/models/album.dart';
+import '../../data/models/artist.dart';
 import '../../services/artwork_service.dart';
 import '../../controller/settings_controller.dart';
 import '../widgets/track_context_menu.dart';
+import 'subpages/album_detail_page.dart';
+import 'subpages/artist_detail_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -225,7 +229,7 @@ class _HomeTrackTile extends StatelessWidget {
 }
 
 class _HomeArtistChip extends StatelessWidget {
-  final dynamic artist;
+  final ArcArtist artist;
 
   const _HomeArtistChip({required this.artist});
 
@@ -235,35 +239,47 @@ class _HomeArtistChip extends StatelessWidget {
 
     return SizedBox(
       width: 80,
-      child: Column(
-        children: [
-          ClipOval(
-            child: SizedBox(
-              width: 64,
-              height: 64,
-              child: _ArtworkWidget(
-                id: artist.id,
-                type: MediaType.artist,
-                artistName: artist.artist,
+      child: GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            settings: const RouteSettings(name: 'artist'),
+            builder: (_) => ArtistDetailPage(artist: artist),
+          ),
+        ),
+        child: Column(
+          children: [
+            ClipOval(
+              child: SizedBox(
+                width: 64,
+                height: 64,
+                child: _ArtworkWidget(
+                  id: artist.id,
+                  type: MediaType.artist,
+                  artistName: artist.artist,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            artist.artist,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface),
-            textAlign: TextAlign.center,
-          ),
-        ],
+            const SizedBox(height: 6),
+            Text(
+              artist.artist,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.onSurface,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _HomeAlbumCard extends StatelessWidget {
-  final dynamic album;
+  final ArcAlbum album;
 
   const _HomeAlbumCard({required this.album});
 
@@ -273,39 +289,48 @@ class _HomeAlbumCard extends StatelessWidget {
 
     return SizedBox(
       width: 110,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SizedBox(
-              width: 110,
-              height: 110,
-              child: _ArtworkWidget(
-                id: album.id,
-                type: MediaType.album,
-                albumName: album.album,
-                artistName: album.artist,
+      child: GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            settings: const RouteSettings(name: 'album'),
+            builder: (_) => AlbumDetailPage(album: album),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 110,
+                height: 110,
+                child: _ArtworkWidget(
+                  id: album.id,
+                  type: MediaType.album,
+                  albumName: album.album,
+                  artistName: album.artist,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            album.album,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
-          ),
-          Text(
-            album.artist,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 10,
-              color: theme.colorScheme.onSurfaceVariant,
+            const SizedBox(height: 6),
+            Text(
+              album.album,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
             ),
-          ),
-        ],
+            Text(
+              album.artist,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
