@@ -20,10 +20,16 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tag }}
 
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.x'
+          flutter-version: '3.44.x'
           channel: 'stable'
 
       - name: Install dependencies
