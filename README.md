@@ -9,7 +9,9 @@
     <a href="#about-the-project">About</a> •
     <a href="#features">Features</a> •
     <a href="#getting-started">Getting Started</a> •
+    <a href="#beta">Beta</a> •
     <a href="#project-structure">Structure</a> •
+    <a href="#changelog">Changelog</a> •
     <a href="#roadmap">Roadmap</a>
   </p>
   <p>
@@ -20,6 +22,7 @@
     <img src="https://img.shields.io/badge/Flutter-3.22+-02569B?logo=flutter" alt="Flutter 3.22+" />
     <img src="https://img.shields.io/badge/Dart-3.12+-0175C2?logo=dart" alt="Dart 3.12+" />
     <img src="https://img.shields.io/badge/Android-API_27+-3DDC84?logo=android" alt="Android API 27+" />
+    <img src="https://img.shields.io/badge/Status-Beta-FF6B35?logo=android" alt="Status: Beta" />
   </div>
   <br>
 </div>
@@ -30,7 +33,7 @@
 
 Arc is a local music player developed as a personal learning project. It aims to provide a clean, modern interface for playing local audio files, with a custom-built audio engine and UI rendering library.
 
-The project is currently in early development. The core theme system, onboarding flow, and settings infrastructure are complete. The main screen, player, and library features are under active development.
+Arc is now in **public beta** (v1.0.0-beta.1). The core experience — library browsing, playback, the persistent miniplayer, theming, and onboarding — is functional, with Spotify Canvas, swipe navigation, and a configurable bottom bar. Active development continues on playlists, tag editing, and polish; feedback is welcome via Issues.
 
 ## Features
 
@@ -43,6 +46,13 @@ The project is currently in early development. The core theme system, onboarding
 - LexendDeca font (9 weights)
 - Onboarding flow with permissions and settings
 - Bilingual support (English / Spanish)
+- Persistent miniplayer and bottom chrome across all routes
+- Custom bottom navigation bar (standard / compact / hidden)
+- Horizontal swipe navigation between library tabs
+- Spotify Canvas background in the full-screen player
+- Reorderable and hideable library tabs
+- "Locate" button on Songs to jump to the playing track
+- Tap artists/albums on Home to open their detail page
 
 ## Getting Started
 
@@ -67,6 +77,19 @@ flutter pub get
 flutter run
 ```
 
+## Beta
+
+The first public beta, **v1.0.0-beta.1**, is available as a signed Android APK.
+
+- **Download:** see the [Releases](https://github.com/FYSPA/Arc/releases) page.
+- **Build it yourself:**
+
+  ```bash
+  flutter build apk --release
+  ```
+
+> This is a beta build. Expect rough edges; please report issues and feedback via GitHub Issues.
+
 ## Project Structure
 
 ```
@@ -79,60 +102,83 @@ lib/
 │   ├── constans.dart          # Brand colors and constants
 │   ├── extensions.dart        # Color and widget extensions
 │   ├── broken_icons.dart      # Custom icon font (900+ icons)
-│   ├── enums.dart             # App-wide enums (empty)
-│   └── translations.dart      # i18n (empty)
+│   ├── enums.dart             # App-wide enums
+│   └── translations.dart      # i18n
+├── data/
+│   └── models/
+│       ├── track.dart        # ArcTrack model
+│       ├── album.dart        # ArcAlbum model
+│       └── artist.dart       # ArcArtist model
 ├── controller/
 │   ├── settings_controller.dart    # Settings state (theme, language, folders)
-│   ├── navigator_controller.dart   # Navigation state (empty)
-│   ├── player_controller.dart      # Audio playback (empty)
-│   ├── indexer_controller.dart     # Library scanning (empty)
-│   ├── queue_controller.dart       # Queue management (empty)
-│   ├── playlist_controller.dart    # Playlist management (empty)
-│   ├── history_controller.dart     # Playback history (empty)
-│   └── current_color_controller.dart # Dynamic color (empty)
+│   ├── navigator_controller.dart   # Navigation state
+│   ├── player_controller.dart      # Audio playback
+│   ├── indexer_controller.dart     # Library scanning
+│   ├── queue_controller.dart       # Queue management
+│   ├── playlist_controller.dart    # Playlist management
+│   ├── history_controller.dart     # Playback history
+│   └── current_color_controller.dart # Dynamic color
 ├── ui/
 │   ├── pages/
 │   │   ├── onboarding_page.dart    # First-run setup
-│   │   ├── main_page.dart          # App shell (empty)
-│   │   ├── home_page.dart          # Home tab (empty)
-│   │   ├── tracks_page.dart        # Track list (empty)
-│   │   ├── albums_page.dart        # Album grid (empty)
-│   │   ├── artists_page.dart       # Artist grid (empty)
-│   │   ├── playlists_page.dart     # Playlist list (empty)
-│   │   ├── search_page.dart        # Search (empty)
-│   │   └── settings_page.dart      # Settings (empty)
+│   │   ├── main_page.dart          # App shell
+│   │   ├── home_page.dart          # Home tab
+│   │   ├── tracks_page.dart        # Track list
+│   │   ├── albums_page.dart        # Album grid
+│   │   ├── artists_page.dart       # Artist grid
+│   │   ├── playlists_page.dart     # Playlist list
+│   │   ├── search_page.dart        # Search
+│   │   ├── settings_page.dart      # Settings
+│   │   ├── library_tabs.dart       # Shared library-tab source
+│   │   └── subpages/
+│   │       ├── album_detail_page.dart
+│   │       ├── artist_detail_page.dart
+│   │       ├── onboarding_appearance.dart
+│   │       ├── onboarding_library.dart
+│   │       └── onboarding_permissions.dart      # Settings
 │   ├── miniplayer/
-│   │   ├── miniplayer_bar.dart     # Collapsed bar (empty)
-│   │   ├── player_page.dart        # Full player (empty)
-│   │   └── lyrics_view.dart        # Lyrics display (empty)
+│   │   ├── miniplayer_bar.dart     # Collapsed bar
+│   │   ├── player_page.dart        # Full player
+│   │   └── lyrics_view.dart        # Lyrics display
 │   ├── dialogs/
 │   │   ├── theme_dialog.dart       # Theme selector
 │   │   ├── performance_dialog.dart # Performance selector
 │   │   ├── backup_restore_dialog.dart
 │   │   ├── color_picker_dialog.dart
-│   │   ├── track_info_dialog.dart  # (empty)
-│   │   ├── common_dialogs.dart     # (empty)
-│   │   ├── edit_tags_dialog.dart   # (empty)
-│   │   └── set_lrc_dialog.dart     # (empty)
+│   │   ├── language_dialog.dart
+│   │   ├── library_tabs_dialog.dart # Reorder/hide tabs
+│   │   ├── add_to_playlist_dialog.dart
+│   │   ├── track_info_dialog.dart 
+│   │   ├── common_dialogs.dart    
+│   │   ├── edit_tags_dialog.dart  
+│   │   └── set_lrc_dialog.dart    
 │   └── widgets/
 │       ├── settings_tile.dart      # Reusable settings tile
 │       ├── settings_card.dart      # Settings card container
 │       ├── section_header.dart     # Section separator
 │       ├── animated_check_mark.dart
-│       ├── artwork.dart            # (empty)
-│       ├── custom_widgets.dart     # (empty)
-│       ├── waveform.dart           # (empty)
-│       └── sort_by_button.dart     # (empty)
+│       ├── animated_artwork_widget.dart
+│       ├── artwork_flight.dart     # Shared-element artwork transition
+│       ├── bottom_chrome.dart      # Miniplayer + custom nav bar
+│       ├── canvas_background.dart  # Spotify Canvas video background
+│       ├── amoled_glow_effect.dart
+│       ├── track_context_menu.dart
+│       ├── explandable_box.dart
+│       ├── artwork.dart           
+│       ├── custom_widgets.dart    
+│       ├── waveform.dart          
+│       └── sort_by_button.dart    
 ├── services/
-│   ├── lyrics_service.dart         # (empty)
-│   ├── audio_tags.dart             # (empty)
-│   ├── arx_canvas_client.dart      # (empty)
-│   └── artwork_service.dart        # (empty)
+│   ├── lyrics_service.dart        
+│   ├── audio_tags.dart            
+│   ├── arx_canvas_client.dart     
+│   ├── artwork_service.dart
+│   └── canvas_service.dart       # Spotify Canvas URL cache/state       
 └── packages/
-    ├── animated_widgets.dart       # (empty)
-    ├── scroll_physics_modified.dart # (empty)
-    ├── image_advanced.dart         # (empty)
-    └── custom_popup.dart           # (empty)
+    ├── animated_widgets.dart      
+    ├── scroll_physics_modified.dart
+    ├── image_advanced.dart        
+    └── custom_popup.dart          
 ```
 
 ## Tech Stack
@@ -149,11 +195,15 @@ lib/
 | UI Renderer | Arx Canvas (custom, in development) |
 | Min Android | API 27 (Android 8.1) |
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the full version history.
+
 ## Roadmap
 
 See [ROADMAP.md](ROADMAP.md) for the full development roadmap.
 
-Current phase: **Phase 1 — Main Page + Miniplayer**
+Current phase: **Public Beta — v1.0.0-beta.1**
 
 ## License
 
