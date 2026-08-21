@@ -13,6 +13,21 @@ enum ArtworkQuality { low, medium, high }
 
 enum CanvasGlassTint { neutral, accent }
 
+enum NavbarMode { standard, compact, hidden }
+
+extension NavbarModeX on NavbarMode {
+  String get label {
+    switch (this) {
+      case NavbarMode.standard:
+        return 'Estándar';
+      case NavbarMode.compact:
+        return 'Compacto';
+      case NavbarMode.hidden:
+        return 'Oculto';
+    }
+  }
+}
+
 extension ArtworkQualityX on ArtworkQuality {
   int get listDecodeSize {
     switch (this) {
@@ -70,13 +85,7 @@ class SettingsController extends ChangeNotifier {
   PerformanceMode _performanceMode = PerformanceMode.off;
   PerformanceMode get performanceMode => _performanceMode;
 
-  List<String> _libraryTabs = [
-    'Songs',
-    'Artists',
-    'Albums',
-    'Folders',
-    'Genres',
-  ];
+  List<String> _libraryTabs = ['Home', 'Songs', 'Albums', 'Artists', 'Folders'];
   List<String> get libraryTabs => List.unmodifiable(_libraryTabs);
 
   int _artworkCacheSize = 300;
@@ -85,8 +94,14 @@ class SettingsController extends ChangeNotifier {
   String _fabType = 'search';
   String get fabType => _fabType;
 
-  String _defaultLibraryTab = 'Songs';
+  String _defaultLibraryTab = 'Home';
   String get defaultLibraryTab => _defaultLibraryTab;
+
+  /// When the Songs-page "locate" FAB is tapped, scroll to the next track in
+  /// the list instead of the currently playing one. ON by default, so returning
+  /// to the Songs page lands you just past the song that was playing.
+  bool _skipToNextOnLocate = true;
+  bool get skipToNextOnLocate => _skipToNextOnLocate;
 
   double _borderRadiusMultiplier = 1.0;
   double get borderRadiusMultiplier => _borderRadiusMultiplier;
@@ -108,6 +123,21 @@ class SettingsController extends ChangeNotifier {
 
   ArtworkQuality _artworkQuality = ArtworkQuality.medium;
   ArtworkQuality get artworkQuality => _artworkQuality;
+
+  /// Duration (ms) of the shared-element artwork flight when opening the full
+  /// player (miniplayer thumbnail lifting into the player center).
+  int _artworkFlightOpenMs = 600;
+  int get artworkFlightOpenMs => _artworkFlightOpenMs;
+
+  /// Duration (ms) of the artwork flight when closing the full player
+  /// (artwork flying back down into the miniplayer).
+  int _artworkFlightCloseMs = 500;
+  int get artworkFlightCloseMs => _artworkFlightCloseMs;
+
+  /// Bottom navigation bar presentation: standard (elevated bar), compact
+  /// (flush, background-less bar under the miniplayer) or hidden (never shown).
+  NavbarMode _navbarMode = NavbarMode.standard;
+  NavbarMode get navbarMode => _navbarMode;
 
   Set<GlowPosition> _amoledGlowPositions = {GlowPosition.topRight};
   Set<GlowPosition> get amoledGlowPositions =>
@@ -209,13 +239,15 @@ class SettingsController extends ChangeNotifier {
 
     _libraryTabs =
         _prefs.getStringList('library_tabs') ??
-        ['Songs', 'Artists', 'Albums', 'Folders', 'Genres'];
+        ['Home', 'Songs', 'Albums', 'Artists', 'Folders'];
 
     _artworkCacheSize = _prefs.getInt('artwork_cache_size') ?? 300;
 
     _fabType = _prefs.getString('fab_type') ?? 'search';
 
-    _defaultLibraryTab = _prefs.getString('default_library_tab') ?? 'Songs';
+    _defaultLibraryTab = _prefs.getString('default_library_tab') ?? 'Home';
+
+    _skipToNextOnLocate = _prefs.getBool('skip_to_next_on_locate') ?? true;
 
     _borderRadiusMultiplier =
         _prefs.getDouble('border_radius_multiplier') ?? 1.0;
@@ -227,6 +259,13 @@ class SettingsController extends ChangeNotifier {
     _enableAnimatedArtwork = _prefs.getBool('enable_animated_artwork') ?? true;
 
     _artworkSize = _prefs.getDouble('artwork_size') ?? 280.0;
+
+    _artworkFlightOpenMs = _prefs.getInt('artwork_flight_open_ms') ?? 600;
+    _artworkFlightCloseMs = _prefs.getInt('artwork_flight_close_ms') ?? 500;
+
+    _navbarMode =
+        NavbarMode.values.elementAtOrNull(_prefs.getInt('navbar_mode') ?? 0) ??
+        NavbarMode.standard;
 
     final qualityIndex = _prefs.getInt('artwork_quality');
     _artworkQuality =
@@ -280,11 +319,15 @@ class SettingsController extends ChangeNotifier {
     _prefs.setInt('artwork_cache_size', _artworkCacheSize);
     _prefs.setString('fab_type', _fabType);
     _prefs.setString('default_library_tab', _defaultLibraryTab);
+    _prefs.setBool('skip_to_next_on_locate', _skipToNextOnLocate);
     _prefs.setDouble('border_radius_multiplier', _borderRadiusMultiplier);
     _prefs.setBool('use_amoled_black', _useAmoledBlack);
     _prefs.setBool('enable_amoled_glow', _enableAmoledGlow);
     _prefs.setBool('enable_animated_artwork', _enableAnimatedArtwork);
     _prefs.setDouble('artwork_size', _artworkSize);
+    _prefs.setInt('artwork_flight_open_ms', _artworkFlightOpenMs);
+    _prefs.setInt('artwork_flight_close_ms', _artworkFlightCloseMs);
+    _prefs.setInt('navbar_mode', _navbarMode.index);
     _prefs.setInt('artwork_quality', _artworkQuality.index);
     _prefs.setStringList(
       'amoled_glow_positions',
@@ -415,6 +458,12 @@ class SettingsController extends ChangeNotifier {
     _save();
   }
 
+  void setSkipToNextOnLocate(bool value) {
+    _skipToNextOnLocate = value;
+    notifyListeners();
+    _save();
+  }
+
   void setBorderRadiusMultiplier(double value) {
     _borderRadiusMultiplier = value;
     notifyListeners();
@@ -452,6 +501,24 @@ class SettingsController extends ChangeNotifier {
 
   void setArtworkQuality(ArtworkQuality quality) {
     _artworkQuality = quality;
+    notifyListeners();
+    _save();
+  }
+
+  void setArtworkFlightOpenMs(int value) {
+    _artworkFlightOpenMs = value;
+    notifyListeners();
+    _save();
+  }
+
+  void setArtworkFlightCloseMs(int value) {
+    _artworkFlightCloseMs = value;
+    notifyListeners();
+    _save();
+  }
+
+  void setNavbarMode(NavbarMode value) {
+    _navbarMode = value;
     notifyListeners();
     _save();
   }

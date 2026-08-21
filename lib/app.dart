@@ -40,7 +40,11 @@ class ArcApp extends StatelessWidget {
                 ],
               );
             },
-            navigatorObservers: [BotToastNavigatorObserver()],
+            navigatorObservers: [
+              BotToastNavigatorObserver(),
+              ChromeNavigatorObserver(),
+            ],
+            navigatorKey: NavigatorController.inst.navigatorKey,
             themeMode: settings.themeMode,
             theme: AppThemes.light(settings.mainColor),
             darkTheme: AppThemes.dark(

@@ -8,15 +8,28 @@ import '../../services/animated_artwork_service.dart';
 import '../../services/artist_photo_service.dart';
 import '../../services/artwork_service.dart';
 import '../dialogs/color_picker_dialog.dart';
-import '../dialogs/language_dialog.dart';
 import '../dialogs/library_tabs_dialog.dart';
-import '../dialogs/performance_dialog.dart';
 import '../dialogs/theme_dialog.dart';
 import '../widgets/settings_card.dart';
 import '../widgets/settings_tile.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,15 +106,6 @@ class SettingsPage extends StatelessWidget {
                   ],
                 ],
                 SettingsTile(
-                  icon: Broken.language_square,
-                  title: 'Language',
-                  subtitle: settings.languageCode == 'es'
-                      ? 'Español'
-                      : 'English',
-                  onTap: () => showLanguageDialog(context, settings),
-                  disabled: true,
-                ),
-                SettingsTile(
                   icon: Broken.command_square,
                   title: 'Border Radius',
                   subtitle:
@@ -116,7 +120,40 @@ class SettingsPage extends StatelessWidget {
                       onChanged: settings.setBorderRadiusMultiplier,
                     ),
                   ),
-                  disabled: true,
+                ),
+                SettingsTile(
+                  icon: Broken.element_4,
+                  title: 'Barra de navegación',
+                  subtitle: settings.navbarMode.label,
+                  trailing: SegmentedButton<NavbarMode>(
+                    selected: {settings.navbarMode},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (selection) =>
+                        settings.setNavbarMode(selection.first),
+                    segments: const [
+                      ButtonSegment(
+                        value: NavbarMode.standard,
+                        label: Text('Estándar'),
+                      ),
+                      ButtonSegment(
+                        value: NavbarMode.compact,
+                        label: Text('Compacto'),
+                      ),
+                      ButtonSegment(
+                        value: NavbarMode.hidden,
+                        label: Text('Oculto'),
+                      ),
+                    ],
+                  ),
+                ),
+                SettingsTile(
+                  icon: Broken.arrow_down_2,
+                  title: 'Saltar al ubicar',
+                  subtitle: 'En Songs, el botón salta a la siguiente canción',
+                  trailing: Switch(
+                    value: settings.skipToNextOnLocate,
+                    onChanged: settings.setSkipToNextOnLocate,
+                  ),
                 ),
               ],
             ),
@@ -137,14 +174,12 @@ class SettingsPage extends StatelessWidget {
                   title: 'Library Tabs',
                   subtitle: '${settings.libraryTabs.length} active',
                   onTap: () => showLibraryTabsDialog(context, settings),
-                  disabled: true,
                 ),
                 SettingsTile(
                   icon: Broken.musicnote,
                   title: 'Default Tab',
                   subtitle: settings.defaultLibraryTab,
                   onTap: () => _showDefaultTabDialog(context, settings),
-                  disabled: true,
                 ),
                 SettingsTile(
                   icon: Broken.folder,
@@ -167,16 +202,6 @@ class SettingsPage extends StatelessWidget {
                     settings.foldersToExclude,
                     settings.removeFolderToExclude,
                   ),
-                  disabled: true,
-                ),
-                SettingsTile(
-                  icon: Broken.eye,
-                  title: 'Include Videos',
-                  subtitle: 'Index video files',
-                  type: SettingsTileType.toggle,
-                  value: settings.includeVideos,
-                  onChanged: settings.setIncludeVideos,
-                  disabled: true,
                 ),
               ],
             ),
@@ -192,13 +217,6 @@ class SettingsPage extends StatelessWidget {
             subtitle: 'Performance and playback',
             child: Column(
               children: [
-                SettingsTile(
-                  icon: Broken.flash,
-                  title: 'Performance Mode',
-                  subtitle: _performanceModeText(settings.performanceMode),
-                  onTap: () => showPerformanceDialog(context, settings),
-                  disabled: true,
-                ),
                 SettingsTile(
                   icon: Broken.image,
                   title: 'Clear Artwork Cache',
@@ -260,6 +278,38 @@ class SettingsPage extends StatelessWidget {
                   ),
                 ),
                 SettingsTile(
+                  icon: Broken.arrow_up_2,
+                  title: 'Vuelo de carátula (abrir)',
+                  subtitle: '${settings.artworkFlightOpenMs}ms',
+                  trailing: SizedBox(
+                    width: 210.0,
+                    child: Slider(
+                      value: settings.artworkFlightOpenMs.toDouble(),
+                      min: 150.0,
+                      max: 1000.0,
+                      divisions: 34,
+                      onChanged: (v) =>
+                          settings.setArtworkFlightOpenMs(v.round()),
+                    ),
+                  ),
+                ),
+                SettingsTile(
+                  icon: Broken.arrow_down_2,
+                  title: 'Vuelo de carátula (cerrar)',
+                  subtitle: '${settings.artworkFlightCloseMs}ms',
+                  trailing: SizedBox(
+                    width: 210.0,
+                    child: Slider(
+                      value: settings.artworkFlightCloseMs.toDouble(),
+                      min: 150.0,
+                      max: 1000.0,
+                      divisions: 34,
+                      onChanged: (v) =>
+                          settings.setArtworkFlightCloseMs(v.round()),
+                    ),
+                  ),
+                ),
+                SettingsTile(
                   icon: Broken.image,
                   title: 'Calidad de carátula',
                   subtitle: 'Resolución en listas (player usa alta siempre)',
@@ -289,7 +339,6 @@ class SettingsPage extends StatelessWidget {
                   title: 'FAB Action',
                   subtitle: _fabTypeText(settings.fabType),
                   onTap: () => _showFabTypeDialog(context, settings),
-                  disabled: true,
                 ),
               ],
             ),
@@ -522,17 +571,6 @@ String _glowPositionsText(Set<GlowPosition> positions) {
   if (positions.isEmpty) return 'None';
   if (positions.length == 1) return positions.first.label;
   return positions.map((p) => p.label).join(', ');
-}
-
-String _performanceModeText(PerformanceMode mode) {
-  switch (mode) {
-    case PerformanceMode.off:
-      return 'Off';
-    case PerformanceMode.powerSaving:
-      return 'Power Saving';
-    case PerformanceMode.limit80:
-      return 'Balanced 80%';
-  }
 }
 
 String _fabTypeText(String type) {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../controller/settings_controller.dart';
+
 const double kFABSize = 52.0;
 const double kDialogMaxWidth = 428.0;
 const double kBottomPaddingMiniplayer = 150.0;
@@ -10,7 +12,8 @@ const double kHistoryDayHeaderHeight = 40.0;
 extension DimensionExtensions on double {
   double get space => this;
   double get spaceX => this * 1.5;
-  double get multipliedRadius => this;
+  double get multipliedRadius =>
+      this * SettingsController.inst.borderRadiusMultiplier;
 }
 
 extension ContextExtensions on BuildContext {

@@ -22,18 +22,65 @@ class TracksPage extends StatefulWidget {
   State<TracksPage> createState() => _TracksPageState();
 }
 
+/// Lets the Songs-page "locate" FAB (rendered in [MainPage]) scroll this list
+/// to the currently playing track. [MainPage] calls [jumpToCurrent]; this holds
+/// the live scroll controller and the currently displayed (filtered) list, so
+/// the FAB never needs a direct reference to the page state.
+class TracksPageController {
+  TracksPageController._();
+  static final inst = TracksPageController._();
+
+  ScrollController? _scrollController;
+  List<ArcTrack>? _displayedTracks;
+
+  void attach(ScrollController controller) => _scrollController = controller;
+
+  void detach(ScrollController controller) {
+    if (_scrollController == controller) _scrollController = null;
+  }
+
+  void setDisplayedTracks(List<ArcTrack> tracks) => _displayedTracks = tracks;
+
+  void jumpToCurrent() {
+    final controller = _scrollController;
+    final tracks = _displayedTracks;
+    if (controller == null || tracks == null) return;
+    final current = PlayerController.inst.currentTrack;
+    if (current == null) return;
+    final idx = tracks.indexWhere((t) => t.id == current.id);
+    if (idx < 0) return;
+    final target = SettingsController.inst.skipToNextOnLocate
+        ? (idx + 1).clamp(0, tracks.length - 1)
+        : idx;
+    controller.animateTo(
+      target * 72.0,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+    );
+  }
+}
+
 class _TracksPageState extends State<TracksPage> {
   String _searchQuery = '';
   bool _showSearch = false;
   final _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   Timer? _debounce;
   List<ArcTrack>? _cachedFilteredTracks;
   String _lastFilterQuery = '';
 
   @override
+  void initState() {
+    super.initState();
+    TracksPageController.inst.attach(_scrollController);
+  }
+
+  @override
   void dispose() {
+    TracksPageController.inst.detach(_scrollController);
     _debounce?.cancel();
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -157,6 +204,7 @@ class _TracksPageState extends State<TracksPage> {
     }
 
     final tracks = _filteredTracks(indexer);
+    TracksPageController.inst.setDisplayedTracks(tracks);
     sw.stop();
     if (sw.elapsedMilliseconds > 16) {
       logD(
@@ -189,6 +237,7 @@ class _TracksPageState extends State<TracksPage> {
           child: tracks.isEmpty && !indexer.isLoadingMore
               ? _EmptyState(hasSearch: _searchQuery.isNotEmpty)
               : ListView.builder(
+                  controller: _scrollController,
                   padding: const EdgeInsets.only(
                     bottom: kBottomPaddingMiniplayer,
                   ),
