@@ -4,7 +4,6 @@ import '../../../controller/settings_controller.dart';
 import '../../../core/broken_icons.dart';
 import '../../../core/enums.dart';
 import '../../dialogs/color_picker_dialog.dart';
-import '../../dialogs/language_dialog.dart';
 import '../../dialogs/library_tabs_dialog.dart';
 import '../../dialogs/theme_dialog.dart';
 import '../../widgets/onboarding_page_header.dart';
@@ -78,12 +77,6 @@ class OnboardingAppearancePage extends StatelessWidget {
             ),
           ],
         ],
-        SettingsTile(
-          icon: Broken.language_square,
-          title: 'Language',
-          subtitle: settings.languageCode == 'es' ? 'Español' : 'English',
-          onTap: () => showLanguageDialog(context, settings),
-        ),
         SettingsTile(
           icon: Broken.command_square,
           title: 'Border Radius',

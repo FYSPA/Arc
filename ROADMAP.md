@@ -1,6 +1,6 @@
 # Arc — Development Roadmap
 
-> Last updated: 2026-08-10
+> Last updated: 2026-08-19
 > Stack: Flutter + Provider + arc_engine + arx_canvas
 > Strategy: **Logic first → Design → Performance**
 
@@ -218,6 +218,37 @@
 
 ---
 
+## Phase 10 — Deferred Settings (Diferidos)
+
+> **Status:** Pending (settings hidden from UI; logic persists in SettingsController)
+> **Date added:** 2026-08-19
+
+These settings were implemented in the UI but hidden because their required
+infrastructure does not exist yet. Their persisted values remain in
+SharedPreferences and the controllers, so the keys keep working once wired.
+
+- [ ] **Include Videos** — `includeVideos` exists but `MediaStoreService` has no
+      `queryVideos()` (Kotlin) and no video UI. Requires native video query +
+      a `videos_page.dart` + player integration.
+- [ ] **Use Media Store** — `useMediaStore` exists; app already always uses
+      MediaStore. Setting is redundant → remove the toggle from UI/controller
+      rather than implement.
+- [ ] **Performance Mode** — `performanceMode` exists in controller but
+      `arc_engine` (C++) exposes no tuning API (buffer size, prefetch,
+      decoder). Requires engine changes first.
+- [ ] **Language (i18n)** — `language` exists; no `arb`/`intl` infrastructure
+      and all UI strings are hardcoded English. Requires full localization
+      setup + wrapping every visible string.
+
+### Wired in this pass (no longer deferred)
+- [x] **Border Radius** — `borderRadiusMultiplier` now drives `Dimensions.inst.multipliedRadius`.
+- [x] **Folders to Exclude** — `indexer_controller.scanDevice()` filters `_allTracks` by `foldersToExclude` in addition to `foldersToScan`.
+- [x] **Library Tabs** — defaults changed to `['Home','Songs','Albums','Artists','Folders']`; `main_page` builds dynamic `IndexedStack` from `libraryTabs`.
+- [x] **Default Tab** — `main_page._initDefaultTab()` navigates to `defaultLibraryTab` on launch.
+- [x] **FAB Action** — `main_page._buildFab()` switches between `search` / `play` / `shuffle` per `fabType`.
+
+---
+
 ## Summary
 
 | Phase | Description | Status | Strategy |
@@ -236,3 +267,4 @@
 | 7B | Delete songs | ⏳ Pending | Logic |
 | 8 | Design polish | ⏳ Pending | Design |
 | 9 | Performance | ⏳ Pending | Performance |
+| 10 | Deferred settings | ⏳ Pending | Logic |

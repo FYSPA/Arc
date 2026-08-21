@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../controller/indexer_controller.dart';
+import '../../controller/navigator_controller.dart';
 import '../../controller/player_controller.dart';
 import '../../controller/settings_controller.dart';
 import '../../core/utils.dart';
@@ -94,6 +95,14 @@ class _SplashPageState extends State<SplashPage>
         transitionDuration: const Duration(milliseconds: 500),
       ),
     );
+
+    // Keep the chrome hidden during the splash's fade-out so it doesn't flash
+    // "on top of" the splash; reveal it once the destination is showing. Set
+    // the flag unconditionally: it's a global singleton and must flip even
+    // after this page is disposed by the pushReplacement.
+    Future.delayed(const Duration(milliseconds: 500), () {
+      NavigatorController.inst.isSplash = false;
+    });
   }
 
   @override

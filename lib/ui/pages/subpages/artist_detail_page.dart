@@ -9,19 +9,32 @@ import '../../../core/broken_icons.dart';
 import '../../../core/extensions.dart';
 import '../../../data/models/artist.dart';
 import '../../../data/models/track.dart';
-import '../../../services/artwork_service.dart';
-import '../../../services/artist_photo_service.dart';
-import '../../../services/media_store_service.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/track_context_menu.dart';
 
-class ArtistDetailPage extends StatelessWidget {
+class ArtistDetailPage extends StatefulWidget {
   final ArcArtist artist;
 
   const ArtistDetailPage({super.key, required this.artist});
 
   @override
+  State<ArtistDetailPage> createState() => _ArtistDetailPageState();
+}
+
+class _ArtistDetailPageState extends State<ArtistDetailPage> {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final artist = widget.artist;
     final indexer = context.read<IndexerController>();
     final tracks = indexer.getTracksByArtist(artist.artist);
     final theme = Theme.of(context);
@@ -191,23 +204,11 @@ class _ArtistArtworkHeaderState extends State<_ArtistArtworkHeader> {
   @override
   void initState() {
     super.initState();
-    _load();
   }
 
-  Future<void> _load() async {
-    final data = await ArtworkService.inst.getArtwork(
-      widget.artistId,
-      MediaType.artist,
-    );
-    if (data != null && data.isNotEmpty) {
-      if (mounted) setState(() => _bytes = data);
-      return;
-    }
-
-    final url = await ArtistPhotoServiceWrapper.inst.getArtistPhotoUrl(
-      widget.artistName,
-    );
-    if (mounted && url != null) setState(() => _networkUrl = url);
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   @override

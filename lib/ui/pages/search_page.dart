@@ -397,7 +397,10 @@ class _SearchAlbumTile extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => AlbumDetailPage(album: album)),
+          MaterialPageRoute(
+            settings: const RouteSettings(name: 'album'),
+            builder: (_) => AlbumDetailPage(album: album),
+          ),
         );
       },
     );
@@ -442,7 +445,10 @@ class _SearchArtistTile extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => ArtistDetailPage(artist: artist)),
+          MaterialPageRoute(
+            settings: const RouteSettings(name: 'artist'),
+            builder: (_) => ArtistDetailPage(artist: artist),
+          ),
         );
       },
     );

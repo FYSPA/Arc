@@ -78,7 +78,10 @@ class _AlbumCard extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => AlbumDetailPage(album: album)),
+          MaterialPageRoute(
+            settings: const RouteSettings(name: 'album'),
+            builder: (_) => AlbumDetailPage(album: album),
+          ),
         );
       },
       child: Column(

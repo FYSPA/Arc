@@ -1,6 +1,6 @@
 # Arc — Roadmap de Desarrollo
 
-> Última actualización: 2026-08-10
+> Última actualización: 2026-08-19
 > Stack: Flutter + Provider + arc_engine + arx_canvas
 > Estrategia: **Lógica primero → Diseño → Performance**
 
@@ -218,6 +218,38 @@
 
 ---
 
+## Fase 10 — Settings Diferidos
+
+> **Estado:** Pendiente (ocultos de la UI; la lógica persiste en SettingsController)
+> **Fecha:** 2026-08-19
+
+Estos settings se implementaron en la UI pero se ocultaron porque la
+infraestructura requerida aún no existe. Sus valores persistidos siguen en
+SharedPreferences y en los controllers, así que las keys siguen funcionando
+cuando se conecten.
+
+- [ ] **Incluir Videos** — `includeVideos` existe pero `MediaStoreService` no
+      tiene `queryVideos()` (Kotlin) ni UI de video. Requiere query nativo de
+      video + `videos_page.dart` + integración con el player.
+- [ ] **Usar Media Store** — `useMediaStore` existe; la app ya siempre usa
+      MediaStore. El setting es redundante → quitar el toggle de UI/controller
+      en vez de implementarlo.
+- [ ] **Modo Performance** — `performanceMode` existe en el controller pero
+      `arc_engine` (C++) no expone API de tuning (tamaño de buffer, prefetch,
+      decoder). Requiere cambios en el engine primero.
+- [ ] **Idioma (i18n)** — `language` existe; no hay infraestructura `arb`/`intl`
+      y todos los strings de UI están hardcodeados en inglés. Requiere setup de
+      localización completo + envolver cada string visible.
+
+### Conectados en esta pasada (ya no diferidos)
+- [x] **Border Radius** — `borderRadiusMultiplier` ahora controla `Dimensions.inst.multipliedRadius`.
+- [x] **Carpetas a Excluir** — `indexer_controller.scanDevice()` filtra `_allTracks` por `foldersToExclude` además de `foldersToScan`.
+- [x] **Tabs de Biblioteca** — defaults cambiados a `['Home','Songs','Albums','Artists','Folders']`; `main_page` construye `IndexedStack` dinámico desde `libraryTabs`.
+- [x] **Tab por Defecto** — `main_page._initDefaultTab()` navega a `defaultLibraryTab` al iniciar.
+- [x] **Acción FAB** — `main_page._buildFab()` alterna entre `search` / `play` / `shuffle` según `fabType`.
+
+---
+
 ## Resumen
 
 | Fase | Descripción | Estado | Estrategia |
@@ -236,3 +268,4 @@
 | 7B | Eliminar canciones | ⏳ Pendiente | Lógica |
 | 8 | Pulido de diseño | ⏳ Pendiente | Diseño |
 | 9 | Performance | ⏳ Pendiente | Performance |
+| 10 | Settings diferidos | ⏳ Pendiente | Lógica |

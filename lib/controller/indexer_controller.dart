@@ -239,8 +239,17 @@ class IndexerController extends ChangeNotifier {
             .map(ArcTrack.fromMap)
             .where((s) => (s.duration ?? 0) > 1000)
             .where((s) {
-              if (folders.isEmpty || s.filePath == null) return true;
-              return folders.any((f) => s.filePath!.startsWith(f));
+              if (s.filePath == null) return true;
+              if (folders.isNotEmpty &&
+                  !folders.any((f) => s.filePath!.startsWith(f))) {
+                return false;
+              }
+              final excludes = SettingsController.inst.foldersToExclude;
+              if (excludes.isNotEmpty &&
+                  excludes.any((f) => s.filePath!.startsWith(f))) {
+                return false;
+              }
+              return true;
             })
             .toList();
         await _loadNextChunk();

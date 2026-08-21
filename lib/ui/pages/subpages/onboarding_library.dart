@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../controller/settings_controller.dart';
 import '../../../core/broken_icons.dart';
 import '../../dialogs/library_tabs_dialog.dart';
-import '../../dialogs/performance_dialog.dart';
 import '../../widgets/onboarding_page_header.dart';
 import '../../widgets/settings_tile.dart';
 
@@ -22,14 +21,6 @@ class OnboardingLibraryPage extends StatelessWidget {
           subtitle: 'Configure your music folders',
         ),
         const SizedBox(height: 16.0),
-        SettingsTile(
-          icon: Broken.video,
-          title: 'Include Videos',
-          subtitle: 'Index video files too',
-          type: SettingsTileType.toggle,
-          value: settings.includeVideos,
-          onChanged: settings.setIncludeVideos,
-        ),
         SettingsTile(
           icon: Broken.folder_open,
           title: 'Add Folder',
@@ -58,23 +49,9 @@ class OnboardingLibraryPage extends StatelessWidget {
           ),
         ),
         SettingsTile(
-          icon: Broken.mobile,
-          title: 'Media Store',
-          subtitle: 'Use Android MediaStore',
-          type: SettingsTileType.toggle,
-          value: settings.useMediaStore,
-          onChanged: settings.setUseMediaStore,
-        ),
-        SettingsTile(
           icon: Broken.image,
           title: 'Artwork Cache',
           subtitle: '${settings.artworkCacheSize}px',
-        ),
-        SettingsTile(
-          icon: Broken.cpu_setting,
-          title: 'Performance Mode',
-          subtitle: _performanceModeText(settings.performanceMode),
-          onTap: () => showPerformanceDialog(context, settings),
         ),
         SettingsTile(
           icon: Broken.color_swatch,
@@ -90,17 +67,6 @@ class OnboardingLibraryPage extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-String _performanceModeText(PerformanceMode mode) {
-  switch (mode) {
-    case PerformanceMode.off:
-      return 'Off';
-    case PerformanceMode.powerSaving:
-      return 'Power Saving';
-    case PerformanceMode.limit80:
-      return 'Balanced (80%)';
   }
 }
 

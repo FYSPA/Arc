@@ -70,7 +70,10 @@ class _ArtistTile extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => ArtistDetailPage(artist: artist)),
+          MaterialPageRoute(
+            settings: const RouteSettings(name: 'artist'),
+            builder: (_) => ArtistDetailPage(artist: artist),
+          ),
         );
       },
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

@@ -16,10 +16,25 @@ import '../../widgets/animated_artwork_widget.dart';
 import '../../widgets/artwork.dart';
 import '../../widgets/track_context_menu.dart';
 
-class AlbumDetailPage extends StatelessWidget {
+class AlbumDetailPage extends StatefulWidget {
   final ArcAlbum album;
 
   const AlbumDetailPage({super.key, required this.album});
+
+  @override
+  State<AlbumDetailPage> createState() => _AlbumDetailPageState();
+}
+
+class _AlbumDetailPageState extends State<AlbumDetailPage> {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
 
   static Widget _buildArtworkHeader(BuildContext context, ArcAlbum album) {
     final settings = context.watch<SettingsController>();
@@ -47,6 +62,7 @@ class AlbumDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final album = widget.album;
     final indexer = context.read<IndexerController>();
     final tracks = indexer.getTracksByAlbum(album.album);
     final theme = Theme.of(context);
