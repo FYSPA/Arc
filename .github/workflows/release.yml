@@ -37,6 +37,9 @@ jobs:
           flutter-version: '3.44.5'
           channel: 'stable'
 
+      - name: Authenticate git for private Arx-Canvas
+        run: git config --global url."https://${{ secrets.REPO_TOKEN }}@github.com/FYSPA/Arx-Canvas.git".insteadOf "https://github.com/FYSPA/Arx-Canvas.git"
+
       - name: Install dependencies
         run: flutter pub get
 
