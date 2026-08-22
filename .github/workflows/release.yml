@@ -18,7 +18,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag }}
+          fetch-depth: 0
+
+      - name: Checkout release tag
+        run: |
+          git fetch --tags origin
+          git checkout ${{ github.event.inputs.tag }}
 
       - name: Set up JDK
         uses: actions/setup-java@v4
